@@ -46,7 +46,7 @@ class NewsImporter
         }
 
         return $this->targetConnection->transactional(
-            fn (): array => $this->runImport($legacy, $options)
+            fn (Connection $_connection): array => $this->runImport($legacy, $options)
         );
     }
 
