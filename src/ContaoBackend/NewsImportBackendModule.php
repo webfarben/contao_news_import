@@ -8,7 +8,6 @@ use Contao\BackendModule;
 use Contao\Config;
 use Contao\Environment;
 use Contao\Input;
-use Contao\Message;
 use Contao\StringUtil;
 use Contao\System;
 use Sebastian\ContaoImport\Import\ImportOptions;
@@ -20,7 +19,7 @@ class NewsImportBackendModule extends BackendModule
 
     protected function compile(): void
     {
-        $storedFormData = $this->consumeStoredFormData();
+        $storedFormData = $this->loadPersistedFormData();
 
         $formData = [
             'source_host' => $this->inputValue('source_host', (string) ($storedFormData['source_host'] ?? Config::get('contaoNewsImportSourceHost'))),
@@ -47,11 +46,11 @@ class NewsImportBackendModule extends BackendModule
         $this->Template->headline = 'Legacy-News-Import';
         $this->Template->action = StringUtil::ampersand(Environment::get('request'));
         $this->Template->requestToken = defined('REQUEST_TOKEN') ? REQUEST_TOKEN : '';
-        $this->Template->statusMessage = null;
-        $this->Template->statusType = null;
+        $this->Template->statusMessage = (string) Config::get('contaoNewsImportLastStatusMessage');
+        $this->Template->statusType = (string) Config::get('contaoNewsImportLastStatusType');
         $this->Template->stats = null;
         $this->Template->formData = $formData;
-        $this->Template->messages = Message::generate();
+        $this->Template->messages = '';
 
         if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT')) {
             return;
@@ -73,7 +72,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null === $legacyDatabaseUrl) {
             $this->setFeedback('error', 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.');
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -89,7 +88,7 @@ class NewsImportBackendModule extends BackendModule
             } catch (\Throwable $e) {
                 $this->setFeedback('error', 'Verbindung fehlgeschlagen: ' . $e->getMessage());
             }
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->formData = $formData;
             return;
         }
@@ -100,7 +99,7 @@ class NewsImportBackendModule extends BackendModule
             $testConnection->executeQuery('SELECT 1');
         } catch (\Throwable $e) {
             $this->setFeedback('error', 'Verbindung zur Quelldatenbank fehlgeschlagen: ' . $e->getMessage());
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -116,7 +115,7 @@ class NewsImportBackendModule extends BackendModule
 
         if ($truncateArchives && !$truncate) {
             $this->setFeedback('error', 'Die Option "Archive loeschen" funktioniert nur zusammen mit "News/Inhalte leeren".');
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -126,7 +125,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null === $archiveIds) {
             $this->setFeedback('error', 'Archive-ID-Liste ist ungueltig. Bitte kommagetrennte Zahlen eintragen.');
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -137,7 +136,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (false === $since || false === $until) {
             $this->setFeedback('error', 'Datumswerte muessen YYYY-MM-DD oder Unix-Timestamp sein.');
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -145,7 +144,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null !== $since && null !== $until && $since > $until) {
             $this->setFeedback('error', '"Seit" darf nicht groesser als "Bis" sein.');
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -193,7 +192,7 @@ class NewsImportBackendModule extends BackendModule
             }
 
             $this->setFeedback('success', $successMessage);
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->statusMessage = $successMessage;
             $this->Template->statusType = 'success';
             $this->Template->stats = $stats;
@@ -206,7 +205,7 @@ class NewsImportBackendModule extends BackendModule
                 $exception->getLine()
             );
             $this->setFeedback('error', $message);
-            $this->storeFormData($formData);
+            $this->persistFormData($formData);
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = $message;
             $this->Template->formData = $formData;
@@ -216,37 +215,51 @@ class NewsImportBackendModule extends BackendModule
     /**
      * @param array<string, mixed> $formData
      */
-    private function storeFormData(array $formData): void
+    private function persistFormData(array $formData): void
     {
-        $_SESSION['contao_news_import_form_data'] = $formData;
+        Config::persist('contaoNewsImportLastSourceHost', (string) ($formData['source_host'] ?? ''));
+        Config::persist('contaoNewsImportLastSourcePort', (string) ($formData['source_port'] ?? ''));
+        Config::persist('contaoNewsImportLastSourceDatabase', (string) ($formData['source_database'] ?? ''));
+        Config::persist('contaoNewsImportLastSourceUser', (string) ($formData['source_user'] ?? ''));
+        Config::persist('contaoNewsImportLastSourcePassword', (string) ($formData['source_password'] ?? ''));
+        Config::persist('contaoNewsImportLastArchiveIds', (string) ($formData['archive_ids'] ?? ''));
+        Config::persist('contaoNewsImportLastSince', (string) ($formData['since'] ?? ''));
+        Config::persist('contaoNewsImportLastUntil', (string) ($formData['until'] ?? ''));
+        Config::persist('contaoNewsImportLastDryRun', !empty($formData['dry_run']) ? '1' : '');
+        Config::persist('contaoNewsImportLastTruncate', !empty($formData['truncate']) ? '1' : '');
+        Config::persist('contaoNewsImportLastTruncateArchives', !empty($formData['truncate_archives']) ? '1' : '');
+        Config::persist('contaoNewsImportLastSaveCredentials', !empty($formData['save_credentials']) ? '1' : '');
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function consumeStoredFormData(): array
+    private function loadPersistedFormData(): array
     {
-        if (!isset($_SESSION['contao_news_import_form_data']) || !is_array($_SESSION['contao_news_import_form_data'])) {
-            return [];
-        }
-
-        $formData = $_SESSION['contao_news_import_form_data'];
-        unset($_SESSION['contao_news_import_form_data']);
-
-        return $formData;
+        return [
+            'source_host' => (string) Config::get('contaoNewsImportLastSourceHost'),
+            'source_port' => (string) Config::get('contaoNewsImportLastSourcePort'),
+            'source_database' => (string) Config::get('contaoNewsImportLastSourceDatabase'),
+            'source_user' => (string) Config::get('contaoNewsImportLastSourceUser'),
+            'source_password' => (string) Config::get('contaoNewsImportLastSourcePassword'),
+            'archive_ids' => (string) Config::get('contaoNewsImportLastArchiveIds'),
+            'since' => (string) Config::get('contaoNewsImportLastSince'),
+            'until' => (string) Config::get('contaoNewsImportLastUntil'),
+            'dry_run' => '1' === (string) Config::get('contaoNewsImportLastDryRun'),
+            'truncate' => '1' === (string) Config::get('contaoNewsImportLastTruncate'),
+            'truncate_archives' => '1' === (string) Config::get('contaoNewsImportLastTruncateArchives'),
+            'save_credentials' => '1' === (string) Config::get('contaoNewsImportLastSaveCredentials'),
+        ];
     }
 
     private function setFeedback(string $type, string $message): void
     {
-        if ('error' === $type) {
-            Message::addError($message);
-        } else {
-            Message::addConfirmation($message);
-        }
+        Config::persist('contaoNewsImportLastStatusType', $type);
+        Config::persist('contaoNewsImportLastStatusMessage', $message);
 
         $this->Template->statusType = $type;
         $this->Template->statusMessage = $message;
-        $this->Template->messages = Message::generate();
+        $this->Template->messages = '';
     }
 
     private function inputValue(string $name, string $default): string
