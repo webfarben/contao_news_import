@@ -45,7 +45,7 @@ class NewsImportBackendModule extends BackendModule
 
         $this->Template->headline = 'Legacy-News-Import';
         $this->Template->action = StringUtil::ampersand(Environment::get('request'));
-        $this->Template->requestToken = defined('REQUEST_TOKEN') ? REQUEST_TOKEN : '';
+        $this->Template->requestToken = $this->resolveRequestToken();
         $this->Template->statusMessage = (string) Config::get('contaoNewsImportLastStatusMessage');
         $this->Template->statusType = (string) Config::get('contaoNewsImportLastStatusType');
         $this->Template->stats = null;
@@ -271,6 +271,25 @@ class NewsImportBackendModule extends BackendModule
         }
 
         return trim((string) $value);
+    }
+
+    private function resolveRequestToken(): string
+    {
+        if (defined('REQUEST_TOKEN') && '' !== (string) REQUEST_TOKEN) {
+            return (string) REQUEST_TOKEN;
+        }
+
+        $container = System::getContainer();
+
+        if ($container->has('contao.csrf.token_manager')) {
+            $tokenManager = $container->get('contao.csrf.token_manager');
+
+            if (\is_object($tokenManager) && \method_exists($tokenManager, 'getDefaultTokenValue')) {
+                return (string) $tokenManager->getDefaultTokenValue();
+            }
+        }
+
+        return '';
     }
 
     private function buildLegacyDatabaseUrl(string $host, string $port, string $database, string $user, string $password): ?string
