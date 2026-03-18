@@ -6,6 +6,13 @@ namespace Sebastian\ContaoImport\Import;
 
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\Types\BigIntType;
+use Doctrine\DBAL\Types\BooleanType;
+use Doctrine\DBAL\Types\DecimalType;
+use Doctrine\DBAL\Types\FloatType;
+use Doctrine\DBAL\Types\IntegerType;
+use Doctrine\DBAL\Types\SmallIntType;
 
 class NewsImporter
 {
@@ -20,7 +27,7 @@ class NewsImporter
     private array $fixedValues;
 
     /**
-     * @var array<string, array<string, bool>>
+     * @var array<string, array<string, Column>>
      */
     private array $tableColumns = [];
 
@@ -192,6 +199,7 @@ class NewsImporter
             $row = $this->applyColumnMap($table, $row);
             $row = $this->applyFixedValues($table, $row);
             $row = $this->filterByColumns($row, $targetColumns);
+            $row = $this->normalizeRowForTargetColumns($row, $targetColumns);
 
             if (!isset($row['id'])) {
                 ++$stats['skipped'];
@@ -239,12 +247,12 @@ class NewsImporter
         return $stats;
     }
 
-    /**
-     * @param array<string, mixed> $row
-     * @param array<string, mixed> $targetColumns
-     *
-     * @return array<string, mixed>
-     */
+     /**
+      * @param array<string, mixed> $row
+      * @param array<string, Column> $targetColumns
+      *
+      * @return array<string, mixed>
+      */
     private function filterByColumns(array $row, array $targetColumns): array
     {
         $filtered = [];
@@ -256,6 +264,49 @@ class NewsImporter
         }
 
         return $filtered;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param array<string, Column> $targetColumns
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeRowForTargetColumns(array $row, array $targetColumns): array
+    {
+        foreach ($row as $columnName => $value) {
+            if ('' !== $value || !isset($targetColumns[$columnName])) {
+                continue;
+            }
+
+            $column = $targetColumns[$columnName];
+            $type = $column->getType();
+
+            if (
+                $type instanceof IntegerType
+                || $type instanceof SmallIntType
+                || $type instanceof BigIntType
+                || $type instanceof BooleanType
+                || $type instanceof FloatType
+                || $type instanceof DecimalType
+            ) {
+                $default = $column->getDefault();
+
+                if (null !== $default && '' !== (string) $default) {
+                    $row[$columnName] = $default;
+                    continue;
+                }
+
+                $row[$columnName] = $column->getNotnull() ? 0 : null;
+                continue;
+            }
+
+            if (!$column->getNotnull()) {
+                $row[$columnName] = null;
+            }
+        }
+
+        return $row;
     }
 
     /**
@@ -303,7 +354,7 @@ class NewsImporter
     }
 
     /**
-     * @return array<string, bool>
+     * @return array<string, Column>
      */
     private function getTargetColumns(string $table): array
     {
@@ -311,10 +362,7 @@ class NewsImporter
             return $this->tableColumns[$table];
         }
 
-        $this->tableColumns[$table] = array_fill_keys(
-            array_keys($this->targetConnection->createSchemaManager()->listTableColumns($table)),
-            true
-        );
+        $this->tableColumns[$table] = $this->targetConnection->createSchemaManager()->listTableColumns($table);
 
         return $this->tableColumns[$table];
     }
