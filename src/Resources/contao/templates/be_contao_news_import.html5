@@ -2,7 +2,14 @@
   <h2><?= $this->headline ?></h2>
 
   <?php if ($this->statusMessage): ?>
-    <p class="tl_<?= $this->statusType === 'success' ? 'confirm' : 'error' ?>"><?= $this->statusMessage ?></p>
+    <?php if ($this->statusType === 'error'): ?>
+      <div class="tl_error" style="padding: 15px; margin-bottom: 20px; background-color: #fdf7f5; border: 1px solid #d4534f; border-radius: 3px;">
+        <div style="color: #d4534f; font-weight: bold; margin-bottom: 10px;">⚠ Fehler aufgetreten</div>
+        <div style="font-family: monospace; font-size: 12px; color: #333; white-space: pre-wrap; word-wrap: break-word;"><?= $this->statusMessage ?></div>
+      </div>
+    <?php else: ?>
+      <p class="tl_confirm"><?= $this->statusMessage ?></p>
+    <?php endif; ?>
   <?php endif; ?>
 
   <!-- Debug: Stats availability -->

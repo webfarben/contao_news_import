@@ -45,6 +45,11 @@ class NewsImportBackendModule extends BackendModule
         if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT')) {
             return;
         }
+        
+            // Log form submission
+            \error_log('=== CONTAO NEWS IMPORT START ===');
+            \error_log('DryRun: ' . ($dryRun ? 'yes' : 'no'));
+            \error_log('URL: ' . ($legacyDatabaseUrl ?? 'null'));
 
         $dryRun = $formData['dry_run'];
         $truncate = $formData['truncate'];
@@ -68,6 +73,24 @@ class NewsImportBackendModule extends BackendModule
         }
 
         // Test connection before proceeding
+        // Handle test connection request
+        if ('test_connection' === Input::post('action')) {
+            try {
+                $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
+                $testConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
+                $testConnection->executeQuery('SELECT 1');
+                
+                $this->Template->statusType = 'success';
+                $this->Template->statusMessage = '✓ Verbindung erfolgreich! Die Quelldatenbank ist erreichbar.';
+            } catch (\Throwable $e) {
+                $this->Template->statusType = 'error';
+                $this->Template->statusMessage = 'FEHLER: ' . $e->getMessage();
+            }
+            $this->Template->formData = $formData;
+            return;
+        }
+
+        // Test connection before proceeding with actual import
         try {
             $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
             $testConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
@@ -75,10 +98,7 @@ class NewsImportBackendModule extends BackendModule
             $testConnection->executeQuery('SELECT 1');
         } catch (\Throwable $e) {
             $this->Template->statusType = 'error';
-            $this->Template->statusMessage = sprintf(
-                'Verbindung zur Quelldatenbank fehlgeschlagen: %s',
-                $e->getMessage()
-            );
+            $this->Template->statusMessage = 'FEHLER bei Verbindung: ' . $e->getMessage();
             $this->Template->formData = $formData;
 
             return;
@@ -192,12 +212,16 @@ class NewsImportBackendModule extends BackendModule
             \error_log('ImportError: ' . $exception->getMessage() . "\n" . $exception->getTraceAsString());
             
             $this->Template->statusType = 'error';
-            $this->Template->statusMessage = sprintf(
-                'Import fehlgeschlagen: %s (Datei: %s, Zeile: %d)',
-                $exception->getMessage(),
-                $exception->getFile(),
-                $exception->getLine()
+            
+            $errorDetails = sprintf(
+                "<strong>%s</strong><br><br><strong>Datei:</strong> %s (Zeile %d)<br><br><strong>Stack Trace:</strong><br><pre>%s</pre>",
+                htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8'),
+                htmlspecialchars($exception->getFile(), ENT_QUOTES, 'UTF-8'),
+                $exception->getLine(),
+                htmlspecialchars($exception->getTraceAsString(), ENT_QUOTES, 'UTF-8')
             );
+            
+            $this->Template->statusMessage = $errorDetails;
             $this->Template->formData = $formData;
         }
     }
