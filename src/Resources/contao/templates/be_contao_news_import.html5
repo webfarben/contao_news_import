@@ -1,6 +1,8 @@
 <div class="tl_listing_container">
   <h2><?= $this->headline ?></h2>
 
+  <?= $this->messages ?>
+
   <?php if ($this->statusMessage): ?>
     <?php if ($this->statusType === 'error'): ?>
       <div class="tl_error" style="padding: 12px; margin-bottom: 16px;">

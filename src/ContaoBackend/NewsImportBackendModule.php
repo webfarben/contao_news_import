@@ -8,6 +8,7 @@ use Contao\BackendModule;
 use Contao\Config;
 use Contao\Environment;
 use Contao\Input;
+use Contao\Message;
 use Contao\StringUtil;
 use Contao\System;
 use Sebastian\ContaoImport\Import\ImportOptions;
@@ -41,12 +42,7 @@ class NewsImportBackendModule extends BackendModule
         $this->Template->statusType = null;
         $this->Template->stats = null;
         $this->Template->formData = $formData;
-
-        $feedback = $this->consumeFeedback();
-        if (null !== $feedback) {
-            $this->Template->statusType = $feedback['type'];
-            $this->Template->statusMessage = $feedback['message'];
-        }
+        $this->Template->messages = Message::generate();
 
         if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT')) {
             return;
@@ -201,35 +197,15 @@ class NewsImportBackendModule extends BackendModule
 
     private function setFeedback(string $type, string $message): void
     {
-        $_SESSION['contao_news_import_feedback'] = [
-            'type' => $type,
-            'message' => $message,
-        ];
+        if ('error' === $type) {
+            Message::addError($message);
+        } else {
+            Message::addConfirmation($message);
+        }
 
         $this->Template->statusType = $type;
         $this->Template->statusMessage = $message;
-    }
-
-    /**
-     * @return array{type: string, message: string}|null
-     */
-    private function consumeFeedback(): ?array
-    {
-        if (!isset($_SESSION['contao_news_import_feedback']) || !is_array($_SESSION['contao_news_import_feedback'])) {
-            return null;
-        }
-
-        $feedback = $_SESSION['contao_news_import_feedback'];
-        unset($_SESSION['contao_news_import_feedback']);
-
-        if (!isset($feedback['type'], $feedback['message'])) {
-            return null;
-        }
-
-        return [
-            'type' => (string) $feedback['type'],
-            'message' => (string) $feedback['message'],
-        ];
+        $this->Template->messages = Message::generate();
     }
 
     private function inputValue(string $name, string $default): string
