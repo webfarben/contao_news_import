@@ -324,9 +324,7 @@ class NewsImporter
             ->where($where ?? '1=1')
             ->orderBy('id', 'ASC');
 
-        foreach ($params as $name => $value) {
-            $queryBuilder->setParameter($name, $value, $types[$name] ?? null);
-        }
+        $this->bindQueryParameters($queryBuilder, $params, $types);
 
         return $queryBuilder->executeQuery()->fetchAllAssociative();
     }
@@ -346,11 +344,25 @@ class NewsImporter
             ->where($where)
             ->orderBy('id', 'ASC');
 
-        foreach ($params as $name => $value) {
-            $queryBuilder->setParameter($name, $value, $types[$name] ?? null);
-        }
+        $this->bindQueryParameters($queryBuilder, $params, $types);
 
         return array_map('intval', $queryBuilder->executeQuery()->fetchFirstColumn());
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @param array<string, mixed> $types
+     */
+    private function bindQueryParameters(\Doctrine\DBAL\Query\QueryBuilder $queryBuilder, array $params, array $types): void
+    {
+        foreach ($params as $name => $value) {
+            if (array_key_exists($name, $types)) {
+                $queryBuilder->setParameter($name, $value, $types[$name]);
+                continue;
+            }
+
+            $queryBuilder->setParameter($name, $value);
+        }
     }
 
     /**
