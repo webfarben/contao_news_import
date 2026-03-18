@@ -1,0 +1,20 @@
+{
+  "name": "webfarben/contao-news-import",
+  "description": "Contao 5 bundle to import legacy news from an external database",
+  "homepage": "https://github.com/webfarben/contao_news_import",
+  "type": "contao-bundle",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.1",
+    "contao/core-bundle": "^5.0",
+    "doctrine/dbal": "^3.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "Sebastian\\ContaoImport\\": "src/"
+    }
+  },
+  "extra": {
+    "contao-manager-plugin": "Sebastian\\ContaoImport\\ContaoManager\\Plugin"
+  }
+}

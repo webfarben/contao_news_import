@@ -1,0 +1,30 @@
+parameters:
+  contao_import.legacy_database_url: '%env(default::LEGACY_DATABASE_URL)%'
+  contao_import.column_map:
+    tl_news_archive: { }
+    tl_news: { }
+    tl_content: { }
+  contao_import.fixed_values:
+    tl_content:
+      ptable: 'tl_news'
+
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+
+  Sebastian\ContaoImport\:
+    resource: '../src/*'
+    exclude:
+      - '../src/ContaoManager/'
+      - '../src/DependencyInjection/'
+      - '../src/ContaoImportBundle.php'
+
+  Sebastian\ContaoImport\Import\LegacyConnectionFactory:
+    arguments:
+      $databaseUrl: '%contao_import.legacy_database_url%'
+
+  Sebastian\ContaoImport\Import\NewsImporter:
+    arguments:
+      $columnMap: '%contao_import.column_map%'
+      $fixedValues: '%contao_import.fixed_values%'

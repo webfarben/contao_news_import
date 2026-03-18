@@ -1,0 +1,42 @@
+name: Publish Package Webhook
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  notify-packages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate webhook URL
+        run: |
+          test -n "${{ secrets.PACKAGES_WEBHOOK_URL }}"
+
+      - name: Notify package webhook
+        env:
+          WEBHOOK_URL: ${{ secrets.PACKAGES_WEBHOOK_URL }}
+          WEBHOOK_TOKEN: ${{ secrets.PACKAGES_WEBHOOK_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          payload='{
+            "github": {
+              "repository": "'"$REPOSITORY"'",
+              "ref_name": "'"$REF_NAME"'",
+              "sha": "'"$SHA"'",
+              "source": "tag-push"
+            }
+          }'
+
+          if [ -n "$WEBHOOK_TOKEN" ]; then
+            curl -fsSL -X POST "$WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $WEBHOOK_TOKEN" \
+              -d "$payload"
+          else
+            curl -fsSL -X POST "$WEBHOOK_URL" \
+              -H "Content-Type: application/json" \
+              -d "$payload"
+          fi
