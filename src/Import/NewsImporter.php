@@ -39,7 +39,7 @@ class NewsImporter
      */
     public function import(ImportOptions $options): array
     {
-        $legacy = $this->legacyConnectionFactory->getConnection();
+        $legacy = $this->legacyConnectionFactory->getConnection($options->legacyDatabaseUrl);
 
         if ($options->dryRun) {
             return $this->runImport($legacy, $options);

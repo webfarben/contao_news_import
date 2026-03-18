@@ -10,32 +10,65 @@
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $this->requestToken ?>">
 
     <div class="tl_formbody_edit">
+      <h3>Quelldatenbank</h3>
+
+      <div class="widget">
+        <h3><label for="source_host">Host</label></h3>
+        <input type="text" id="source_host" name="source_host" class="tl_text" placeholder="127.0.0.1" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_host']) ?>">
+      </div>
+
+      <div class="widget">
+        <h3><label for="source_port">Port</label></h3>
+        <input type="text" id="source_port" name="source_port" class="tl_text" placeholder="3306" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_port']) ?>">
+      </div>
+
+      <div class="widget">
+        <h3><label for="source_database">Datenbank</label></h3>
+        <input type="text" id="source_database" name="source_database" class="tl_text" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_database']) ?>">
+      </div>
+
+      <div class="widget">
+        <h3><label for="source_user">Benutzer</label></h3>
+        <input type="text" id="source_user" name="source_user" class="tl_text" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_user']) ?>">
+      </div>
+
+      <div class="widget">
+        <h3><label for="source_password">Passwort</label></h3>
+        <input type="password" id="source_password" name="source_password" class="tl_text" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_password']) ?>">
+      </div>
+
+      <div class="widget checkbox_container">
+        <span><input type="checkbox" id="save_credentials" name="save_credentials" value="1"<?= $this->formData['save_credentials'] ? ' checked' : '' ?>> <label for="save_credentials">Zugangsdaten in localconfig speichern (inkl. Passwort)</label></span>
+      </div>
+
+      <h3>Importfilter</h3>
+
       <div class="widget">
         <h3><label for="archive_ids">Archive-IDs</label></h3>
-        <input type="text" id="archive_ids" name="archive_ids" class="tl_text" placeholder="z. B. 1,3,8" value="<?= \Contao\StringUtil::specialchars(\Contao\Input::post('archive_ids')) ?>">
+        <input type="text" id="archive_ids" name="archive_ids" class="tl_text" placeholder="z. B. 1,3,8" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['archive_ids']) ?>">
         <p class="tl_help">Leer lassen fuer alle Archive.</p>
       </div>
 
       <div class="widget">
         <h3><label for="since">Seit</label></h3>
-        <input type="text" id="since" name="since" class="tl_text" placeholder="YYYY-MM-DD oder Timestamp" value="<?= \Contao\StringUtil::specialchars(\Contao\Input::post('since')) ?>">
+        <input type="text" id="since" name="since" class="tl_text" placeholder="YYYY-MM-DD oder Timestamp" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['since']) ?>">
       </div>
 
       <div class="widget">
         <h3><label for="until">Bis</label></h3>
-        <input type="text" id="until" name="until" class="tl_text" placeholder="YYYY-MM-DD oder Timestamp" value="<?= \Contao\StringUtil::specialchars(\Contao\Input::post('until')) ?>">
+        <input type="text" id="until" name="until" class="tl_text" placeholder="YYYY-MM-DD oder Timestamp" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['until']) ?>">
       </div>
 
       <div class="widget checkbox_container">
-        <span><input type="checkbox" id="dry_run" name="dry_run" value="1"<?= \Contao\Input::post('dry_run') === '1' ? ' checked' : '' ?>> <label for="dry_run">Dry-Run (nur simulieren)</label></span>
+        <span><input type="checkbox" id="dry_run" name="dry_run" value="1"<?= $this->formData['dry_run'] ? ' checked' : '' ?>> <label for="dry_run">Dry-Run (nur simulieren)</label></span>
       </div>
 
       <div class="widget checkbox_container">
-        <span><input type="checkbox" id="truncate" name="truncate" value="1"<?= \Contao\Input::post('truncate') === '1' ? ' checked' : '' ?>> <label for="truncate">Vor Import News und News-Inhalte loeschen</label></span>
+        <span><input type="checkbox" id="truncate" name="truncate" value="1"<?= $this->formData['truncate'] ? ' checked' : '' ?>> <label for="truncate">Vor Import News und News-Inhalte loeschen</label></span>
       </div>
 
       <div class="widget checkbox_container">
-        <span><input type="checkbox" id="truncate_archives" name="truncate_archives" value="1"<?= \Contao\Input::post('truncate_archives') === '1' ? ' checked' : '' ?>> <label for="truncate_archives">Mitloeschen: Archive</label></span>
+        <span><input type="checkbox" id="truncate_archives" name="truncate_archives" value="1"<?= $this->formData['truncate_archives'] ? ' checked' : '' ?>> <label for="truncate_archives">Mitloeschen: Archive</label></span>
       </div>
     </div>
 

@@ -42,6 +42,8 @@ Nach der Installation erscheint im Contao-Backend unter `System` das Modul `News
 
 Dort kannst du den Import ohne Konsole ausführen:
 
+- Zugangsdaten der Quelldatenbank (Host, Port, Datenbank, Benutzer, Passwort)
+- optionales Speichern der Zugangsdaten in `localconfig.php`
 - Archive-ID-Liste (kommagetrennt, optional)
 - Seit/Bis (YYYY-MM-DD oder Timestamp, optional)
 - Dry-Run
@@ -49,6 +51,8 @@ Dort kannst du den Import ohne Konsole ausführen:
 - optional auch Archive leeren
 
 Nach dem Lauf wird die Tabelle mit Insert/Update/Skip-Werten direkt angezeigt.
+
+Hinweis: Fuer den Import ueber das Backend ist keine `LEGACY_DATABASE_URL` in `.env.local` mehr notwendig, sofern die Quelldatenbank im Formular eingetragen wird.
 
 Optionen:
 

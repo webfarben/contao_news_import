@@ -9,26 +9,32 @@ use Doctrine\DBAL\DriverManager;
 
 class LegacyConnectionFactory
 {
-    private ?Connection $connection = null;
+    /**
+     * @var array<string, Connection>
+     */
+    private array $connections = [];
 
     public function __construct(private readonly ?string $databaseUrl)
     {
     }
 
-    public function getConnection(): Connection
+    public function getConnection(?string $databaseUrlOverride = null): Connection
     {
-        if (null !== $this->connection) {
-            return $this->connection;
-        }
+        $databaseUrl = $databaseUrlOverride ?? $this->databaseUrl;
 
-        if (null === $this->databaseUrl || '' === trim($this->databaseUrl)) {
+        if (null === $databaseUrl || '' === trim($databaseUrl)) {
             throw new \RuntimeException('LEGACY_DATABASE_URL ist nicht gesetzt.');
         }
 
-        $this->connection = DriverManager::getConnection([
-            'url' => $this->databaseUrl,
+        $cacheKey = hash('sha256', $databaseUrl);
+        if (isset($this->connections[$cacheKey])) {
+            return $this->connections[$cacheKey];
+        }
+
+        $this->connections[$cacheKey] = DriverManager::getConnection([
+            'url' => $databaseUrl,
         ]);
 
-        return $this->connection;
+        return $this->connections[$cacheKey];
     }
 }

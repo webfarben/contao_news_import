@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sebastian\ContaoImport\ContaoBackend;
 
 use Contao\BackendModule;
+use Contao\Config;
 use Contao\Environment;
 use Contao\Input;
 use Contao\StringUtil;
@@ -18,20 +19,60 @@ class NewsImportBackendModule extends BackendModule
 
     protected function compile(): void
     {
+        $formData = [
+            'source_host' => $this->inputValue('source_host', (string) Config::get('contaoNewsImportSourceHost')),
+            'source_port' => $this->inputValue('source_port', (string) Config::get('contaoNewsImportSourcePort')),
+            'source_database' => $this->inputValue('source_database', (string) Config::get('contaoNewsImportSourceDatabase')),
+            'source_user' => $this->inputValue('source_user', (string) Config::get('contaoNewsImportSourceUser')),
+            'source_password' => $this->inputValue('source_password', (string) Config::get('contaoNewsImportSourcePassword')),
+            'archive_ids' => $this->inputValue('archive_ids', ''),
+            'since' => $this->inputValue('since', ''),
+            'until' => $this->inputValue('until', ''),
+            'dry_run' => '1' === Input::post('dry_run'),
+            'truncate' => '1' === Input::post('truncate'),
+            'truncate_archives' => '1' === Input::post('truncate_archives'),
+            'save_credentials' => '1' === Input::post('save_credentials'),
+        ];
+
         $this->Template->headline = 'Legacy-News-Import';
         $this->Template->action = StringUtil::ampersand(Environment::get('request'));
         $this->Template->requestToken = defined('REQUEST_TOKEN') ? REQUEST_TOKEN : '';
         $this->Template->statusMessage = null;
         $this->Template->statusType = null;
         $this->Template->stats = null;
+        $this->Template->formData = $formData;
 
         if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT')) {
             return;
         }
 
-        $dryRun = '1' === Input::post('dry_run');
-        $truncate = '1' === Input::post('truncate');
-        $truncateArchives = '1' === Input::post('truncate_archives');
+        $dryRun = $formData['dry_run'];
+        $truncate = $formData['truncate'];
+        $truncateArchives = $formData['truncate_archives'];
+        $saveCredentials = $formData['save_credentials'];
+
+        $legacyDatabaseUrl = $this->buildLegacyDatabaseUrl(
+            (string) $formData['source_host'],
+            (string) $formData['source_port'],
+            (string) $formData['source_database'],
+            (string) $formData['source_user'],
+            (string) $formData['source_password']
+        );
+
+        if (null === $legacyDatabaseUrl) {
+            $this->Template->statusType = 'error';
+            $this->Template->statusMessage = 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.';
+
+            return;
+        }
+
+        if ($saveCredentials) {
+            Config::persist('contaoNewsImportSourceHost', (string) $formData['source_host']);
+            Config::persist('contaoNewsImportSourcePort', (string) $formData['source_port']);
+            Config::persist('contaoNewsImportSourceDatabase', (string) $formData['source_database']);
+            Config::persist('contaoNewsImportSourceUser', (string) $formData['source_user']);
+            Config::persist('contaoNewsImportSourcePassword', (string) $formData['source_password']);
+        }
 
         if ($truncateArchives && !$truncate) {
             $this->Template->statusType = 'error';
@@ -40,7 +81,7 @@ class NewsImportBackendModule extends BackendModule
             return;
         }
 
-        $archiveIds = $this->parseArchiveIds((string) Input::post('archive_ids'));
+        $archiveIds = $this->parseArchiveIds((string) $formData['archive_ids']);
 
         if (null === $archiveIds) {
             $this->Template->statusType = 'error';
@@ -49,8 +90,8 @@ class NewsImportBackendModule extends BackendModule
             return;
         }
 
-        $since = $this->parseDateValue((string) Input::post('since'), false);
-        $until = $this->parseDateValue((string) Input::post('until'), true);
+        $since = $this->parseDateValue((string) $formData['since'], false);
+        $until = $this->parseDateValue((string) $formData['until'], true);
 
         if (false === $since || false === $until) {
             $this->Template->statusType = 'error';
@@ -73,6 +114,7 @@ class NewsImportBackendModule extends BackendModule
             archiveIds: $archiveIds,
             since: $since,
             until: $until,
+            legacyDatabaseUrl: $legacyDatabaseUrl,
         );
 
         try {
@@ -87,6 +129,38 @@ class NewsImportBackendModule extends BackendModule
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = $exception->getMessage();
         }
+    }
+
+    private function inputValue(string $name, string $default): string
+    {
+        $value = Input::post($name);
+
+        if (null === $value) {
+            return $default;
+        }
+
+        return trim((string) $value);
+    }
+
+    private function buildLegacyDatabaseUrl(string $host, string $port, string $database, string $user, string $password): ?string
+    {
+        $host = trim($host);
+        $port = trim($port);
+        $database = trim($database);
+        $user = trim($user);
+
+        if ('' === $host || '' === $database || '' === $user || '' === $port || !ctype_digit($port)) {
+            return null;
+        }
+
+        return sprintf(
+            'mysql://%s:%s@%s:%d/%s?charset=utf8mb4',
+            rawurlencode($user),
+            rawurlencode($password),
+            $host,
+            (int) $port,
+            rawurlencode($database)
+        );
     }
 
     /**
