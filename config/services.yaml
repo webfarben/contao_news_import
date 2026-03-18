@@ -18,6 +18,7 @@ services:
     exclude:
       - '../src/ContaoManager/'
       - '../src/DependencyInjection/'
+      - '../src/Resources/'
       - '../src/ContaoImportBundle.php'
 
   Sebastian\ContaoImport\Import\LegacyConnectionFactory:
