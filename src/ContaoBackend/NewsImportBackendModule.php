@@ -49,6 +49,7 @@ class NewsImportBackendModule extends BackendModule
         $this->Template->statusMessage = (string) Config::get('contaoNewsImportLastStatusMessage');
         $this->Template->statusType = (string) Config::get('contaoNewsImportLastStatusType');
         $this->Template->stats = null;
+        $this->Template->showNoImportInfo = false;
         $this->Template->formData = $formData;
         $this->Template->messages = '';
 
@@ -196,6 +197,7 @@ class NewsImportBackendModule extends BackendModule
             $this->Template->statusMessage = $successMessage;
             $this->Template->statusType = 'success';
             $this->Template->stats = $stats;
+            $this->Template->showNoImportInfo = !$dryRun && 0 === $totalInserted && 0 === $totalUpdated && 0 === $totalSkipped;
             $this->Template->formData = $formData;
         } catch (\Throwable $exception) {
             $message = sprintf(

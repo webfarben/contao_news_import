@@ -108,7 +108,7 @@
         <?php endforeach; ?>
       </tbody>
     </table>
-  <?php elseif ($this->statusType === 'success'): ?>
+  <?php elseif (!empty($this->showNoImportInfo)): ?>
     <p class="tl_info">Kein Import durchgefuehrt (moegliche Ursachen: keine Daten gefunden, truncate-Option nicht aktiviert).</p>
   <?php endif; ?>
 </div>
