@@ -22,10 +22,12 @@ services:
       - '../src/ContaoImportBundle.php'
 
   Sebastian\ContaoImport\Import\LegacyConnectionFactory:
+    public: true
     arguments:
       $databaseUrl: '%contao_import.legacy_database_url%'
 
   Sebastian\ContaoImport\Import\NewsImporter:
+    public: true
     arguments:
       $columnMap: '%contao_import.column_map%'
       $fixedValues: '%contao_import.fixed_values%'
