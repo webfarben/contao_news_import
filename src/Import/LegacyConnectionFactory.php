@@ -11,7 +11,7 @@ class LegacyConnectionFactory
 {
     private ?Connection $connection = null;
 
-    public function __construct(private readonly string $databaseUrl)
+    public function __construct(private readonly ?string $databaseUrl)
     {
     }
 
@@ -21,7 +21,7 @@ class LegacyConnectionFactory
             return $this->connection;
         }
 
-        if ('' === trim($this->databaseUrl)) {
+        if (null === $this->databaseUrl || '' === trim($this->databaseUrl)) {
             throw new \RuntimeException('LEGACY_DATABASE_URL ist nicht gesetzt.');
         }
 
