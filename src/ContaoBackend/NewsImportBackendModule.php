@@ -42,19 +42,21 @@ class NewsImportBackendModule extends BackendModule
         $this->Template->stats = null;
         $this->Template->formData = $formData;
 
+        $feedback = $this->consumeFeedback();
+        if (null !== $feedback) {
+            $this->Template->statusType = $feedback['type'];
+            $this->Template->statusMessage = $feedback['message'];
+        }
+
         if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT')) {
             return;
         }
-        
-            // Log form submission
-            \error_log('=== CONTAO NEWS IMPORT START ===');
-            \error_log('DryRun: ' . ($dryRun ? 'yes' : 'no'));
-            \error_log('URL: ' . ($legacyDatabaseUrl ?? 'null'));
 
         $dryRun = $formData['dry_run'];
         $truncate = $formData['truncate'];
         $truncateArchives = $formData['truncate_archives'];
         $saveCredentials = $formData['save_credentials'];
+        $action = (string) Input::post('action');
 
         $legacyDatabaseUrl = $this->buildLegacyDatabaseUrl(
             (string) $formData['source_host'],
@@ -65,40 +67,32 @@ class NewsImportBackendModule extends BackendModule
         );
 
         if (null === $legacyDatabaseUrl) {
-            $this->Template->statusType = 'error';
-            $this->Template->statusMessage = 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.';
+            $this->setFeedback('error', 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.');
             $this->Template->formData = $formData;
 
             return;
         }
 
-        // Test connection before proceeding
-        // Handle test connection request
-        if ('test_connection' === Input::post('action')) {
+        if ('test_connection' === $action) {
             try {
                 $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
                 $testConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
                 $testConnection->executeQuery('SELECT 1');
-                
-                $this->Template->statusType = 'success';
-                $this->Template->statusMessage = '✓ Verbindung erfolgreich! Die Quelldatenbank ist erreichbar.';
+
+                $this->setFeedback('success', 'Verbindung erfolgreich. Die Quelldatenbank ist erreichbar.');
             } catch (\Throwable $e) {
-                $this->Template->statusType = 'error';
-                $this->Template->statusMessage = 'FEHLER: ' . $e->getMessage();
+                $this->setFeedback('error', 'Verbindung fehlgeschlagen: ' . $e->getMessage());
             }
             $this->Template->formData = $formData;
             return;
         }
 
-        // Test connection before proceeding with actual import
         try {
             $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
             $testConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
-            // Simple query to verify connection works
             $testConnection->executeQuery('SELECT 1');
         } catch (\Throwable $e) {
-            $this->Template->statusType = 'error';
-            $this->Template->statusMessage = 'FEHLER bei Verbindung: ' . $e->getMessage();
+            $this->setFeedback('error', 'Verbindung zur Quelldatenbank fehlgeschlagen: ' . $e->getMessage());
             $this->Template->formData = $formData;
 
             return;
@@ -113,8 +107,7 @@ class NewsImportBackendModule extends BackendModule
         }
 
         if ($truncateArchives && !$truncate) {
-            $this->Template->statusType = 'error';
-            $this->Template->statusMessage = 'Die Option "Archive loeschen" funktioniert nur zusammen mit "News/Inhalte leeren".';
+            $this->setFeedback('error', 'Die Option "Archive loeschen" funktioniert nur zusammen mit "News/Inhalte leeren".');
             $this->Template->formData = $formData;
 
             return;
@@ -123,8 +116,7 @@ class NewsImportBackendModule extends BackendModule
         $archiveIds = $this->parseArchiveIds((string) $formData['archive_ids']);
 
         if (null === $archiveIds) {
-            $this->Template->statusType = 'error';
-            $this->Template->statusMessage = 'Archive-ID-Liste ist ungueltig. Bitte kommagetrennte Zahlen eintragen.';
+            $this->setFeedback('error', 'Archive-ID-Liste ist ungueltig. Bitte kommagetrennte Zahlen eintragen.');
             $this->Template->formData = $formData;
 
             return;
@@ -134,16 +126,14 @@ class NewsImportBackendModule extends BackendModule
         $until = $this->parseDateValue((string) $formData['until'], true);
 
         if (false === $since || false === $until) {
-            $this->Template->statusType = 'error';
-            $this->Template->statusMessage = 'Datumswerte muessen YYYY-MM-DD oder Unix-Timestamp sein.';
+            $this->setFeedback('error', 'Datumswerte muessen YYYY-MM-DD oder Unix-Timestamp sein.');
             $this->Template->formData = $formData;
 
             return;
         }
 
         if (null !== $since && null !== $until && $since > $until) {
-            $this->Template->statusType = 'error';
-            $this->Template->statusMessage = '"Seit" darf nicht groesser als "Bis" sein.';
+            $this->setFeedback('error', '"Seit" darf nicht groesser als "Bis" sein.');
             $this->Template->formData = $formData;
 
             return;
@@ -164,32 +154,17 @@ class NewsImportBackendModule extends BackendModule
             $importer = System::getContainer()->get(NewsImporter::class);
             $stats = $importer->import($options);
 
-            // Debug: Log stats structure
-            \error_log('ImportStats: ' . json_encode($stats, JSON_PRETTY_PRINT));
-
-            $this->Template->statusType = 'success';
-            
-            // Build detailed success message
             $totalInserted = (int) array_sum(array_column($stats, 'inserted'));
             $totalUpdated = (int) array_sum(array_column($stats, 'updated'));
             $totalSkipped = (int) array_sum(array_column($stats, 'skipped'));
-            
-            // Debug output
-            \error_log(sprintf(
-                'Import totals - Inserted: %d, Updated: %d, Skipped: %d, DryRun: %s',
-                $totalInserted,
-                $totalUpdated,
-                $totalSkipped,
-                $dryRun ? 'yes' : 'no'
-            ));
-            
+
             if ($dryRun) {
-                $successMessage = '✓ SIMULATION ERFOLGREICH';
+                $successMessage = 'Simulation erfolgreich';
                 if ($totalInserted === 0 && $totalUpdated === 0 && $totalSkipped === 0) {
                     $successMessage .= ' (keine Daten gefunden)';
                 } else {
                     $successMessage .= sprintf(
-                        ': %d würden eingefügt, %d würden aktualisiert, %d würden übersprungen.',
+                        ': %d wuerden eingefuegt, %d wuerden aktualisiert, %d wuerden uebersprungen.',
                         $totalInserted,
                         $totalUpdated,
                         $totalSkipped
@@ -198,32 +173,63 @@ class NewsImportBackendModule extends BackendModule
             } else {
                 $successMessage = 'Import abgeschlossen';
                 $successMessage .= sprintf(
-                    ': %d eingefügt, %d aktualisiert, %d übersprungen.',
+                    ': %d eingefuegt, %d aktualisiert, %d uebersprungen.',
                     $totalInserted,
                     $totalUpdated,
                     $totalSkipped
                 );
             }
-            
+
+            $this->setFeedback('success', $successMessage);
             $this->Template->statusMessage = $successMessage;
+            $this->Template->statusType = 'success';
             $this->Template->stats = $stats;
             $this->Template->formData = $formData;
         } catch (\Throwable $exception) {
-            \error_log('ImportError: ' . $exception->getMessage() . "\n" . $exception->getTraceAsString());
-            
-            $this->Template->statusType = 'error';
-            
-            $errorDetails = sprintf(
-                "<strong>%s</strong><br><br><strong>Datei:</strong> %s (Zeile %d)<br><br><strong>Stack Trace:</strong><br><pre>%s</pre>",
-                htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8'),
-                htmlspecialchars($exception->getFile(), ENT_QUOTES, 'UTF-8'),
-                $exception->getLine(),
-                htmlspecialchars($exception->getTraceAsString(), ENT_QUOTES, 'UTF-8')
+            $message = sprintf(
+                'Import fehlgeschlagen: %s (Datei: %s, Zeile: %d)',
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
             );
-            
-            $this->Template->statusMessage = $errorDetails;
+            $this->setFeedback('error', $message);
+            $this->Template->statusType = 'error';
+            $this->Template->statusMessage = $message;
             $this->Template->formData = $formData;
         }
+    }
+
+    private function setFeedback(string $type, string $message): void
+    {
+        $_SESSION['contao_news_import_feedback'] = [
+            'type' => $type,
+            'message' => $message,
+        ];
+
+        $this->Template->statusType = $type;
+        $this->Template->statusMessage = $message;
+    }
+
+    /**
+     * @return array{type: string, message: string}|null
+     */
+    private function consumeFeedback(): ?array
+    {
+        if (!isset($_SESSION['contao_news_import_feedback']) || !is_array($_SESSION['contao_news_import_feedback'])) {
+            return null;
+        }
+
+        $feedback = $_SESSION['contao_news_import_feedback'];
+        unset($_SESSION['contao_news_import_feedback']);
+
+        if (!isset($feedback['type'], $feedback['message'])) {
+            return null;
+        }
+
+        return [
+            'type' => (string) $feedback['type'],
+            'message' => (string) $feedback['message'],
+        ];
     }
 
     private function inputValue(string $name, string $default): string

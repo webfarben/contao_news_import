@@ -3,22 +3,12 @@
 
   <?php if ($this->statusMessage): ?>
     <?php if ($this->statusType === 'error'): ?>
-      <div class="tl_error" style="padding: 15px; margin-bottom: 20px; background-color: #fdf7f5; border: 1px solid #d4534f; border-radius: 3px;">
-        <div style="color: #d4534f; font-weight: bold; margin-bottom: 10px;">⚠ Fehler aufgetreten</div>
-        <div style="font-family: monospace; font-size: 12px; color: #333; white-space: pre-wrap; word-wrap: break-word;"><?= $this->statusMessage ?></div>
+      <div class="tl_error" style="padding: 12px; margin-bottom: 16px;">
+        <?= \Contao\StringUtil::specialchars((string) $this->statusMessage) ?>
       </div>
     <?php else: ?>
-      <p class="tl_confirm"><?= $this->statusMessage ?></p>
+      <p class="tl_confirm"><?= \Contao\StringUtil::specialchars((string) $this->statusMessage) ?></p>
     <?php endif; ?>
-  <?php endif; ?>
-
-  <!-- Debug: Stats availability -->
-  <?php if ($this->statusType && !isset($this->stats)): ?>
-    <!-- Stats not initialized -->
-  <?php elseif ($this->statusType && isset($this->stats) && empty($this->stats)): ?>
-    <!-- Stats initialized but empty -->
-  <?php elseif ($this->statusType && isset($this->stats)): ?>
-    <!-- Stats initialized with data: <?= json_encode($this->stats) ?> -->
   <?php endif; ?>
 
   <form method="post" action="<?= $this->action ?>" class="tl_form tl_edit_form">
@@ -90,7 +80,8 @@
 
     <div class="tl_formbody_submit">
       <div class="tl_submit_container">
-        <button type="submit" class="tl_submit">Import starten</button>
+        <button type="submit" class="tl_submit" name="action" value="test_connection">Verbindung testen</button>
+        <button type="submit" class="tl_submit" name="action" value="run_import">Import starten</button>
       </div>
     </div>
   </form>
