@@ -200,6 +200,7 @@ class NewsImporter
             $row = $this->applyFixedValues($table, $row);
             $row = $this->filterByColumns($row, $targetColumns);
             $row = $this->normalizeRowForTargetColumns($row, $targetColumns);
+            $row = $this->normalizeRowEncoding($row);
 
             if (!isset($row['id'])) {
                 ++$stats['skipped'];
@@ -210,7 +211,7 @@ class NewsImporter
             $targetId = null !== $mapEntry ? (int) $mapEntry['target_id'] : (int) $row['id'];
             $row['id'] = $targetId;
 
-            $hash = hash('sha256', json_encode($row, JSON_THROW_ON_ERROR));
+            $hash = hash('sha256', json_encode($row, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
             $exists = (bool) $this->targetConnection->fetchOne("SELECT 1 FROM {$table} WHERE id = ?", [$targetId]);
 
             if (null !== $mapEntry && $mapEntry['row_hash'] === $hash && $exists) {
@@ -307,6 +308,55 @@ class NewsImporter
         }
 
         return $row;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeRowEncoding(array $row): array
+    {
+        foreach ($row as $columnName => $value) {
+            if (!\is_string($value) || '' === $value) {
+                continue;
+            }
+
+            if (1 === preg_match('//u', $value)) {
+                continue;
+            }
+
+            $row[$columnName] = $this->toUtf8($value);
+        }
+
+        return $row;
+    }
+
+    private function toUtf8(string $value): string
+    {
+        if (\function_exists('mb_convert_encoding')) {
+            $converted = mb_convert_encoding($value, 'UTF-8', 'UTF-8,ISO-8859-1,Windows-1252');
+
+            if (\is_string($converted) && 1 === preg_match('//u', $converted)) {
+                return $converted;
+            }
+        }
+
+        if (\function_exists('iconv')) {
+            $converted = iconv('ISO-8859-1', 'UTF-8//IGNORE', $value);
+
+            if (false !== $converted && 1 === preg_match('//u', $converted)) {
+                return $converted;
+            }
+
+            $converted = iconv('UTF-8', 'UTF-8//IGNORE', $value);
+
+            if (false !== $converted && 1 === preg_match('//u', $converted)) {
+                return $converted;
+            }
+        }
+
+        return preg_replace('/[^\x09\x0A\x0D\x20-\x7E]/', '', $value) ?? '';
     }
 
     /**
