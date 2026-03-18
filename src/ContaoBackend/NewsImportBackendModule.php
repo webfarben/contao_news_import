@@ -145,19 +145,33 @@ class NewsImportBackendModule extends BackendModule
             $stats = $importer->import($options);
 
             $this->Template->statusType = 'success';
-            $successMessage = $dryRun ? 'Simulation abgeschlossen.' : 'Import abgeschlossen.';
             
-            // Show summary of results
+            // Build detailed success message
             $totalInserted = array_sum(array_column($stats, 'inserted'));
             $totalUpdated = array_sum(array_column($stats, 'updated'));
             $totalSkipped = array_sum(array_column($stats, 'skipped'));
             
-            $successMessage .= sprintf(
-                ' Gesamt: %d eingefuegt, %d aktualisiert, %d uebersprungen.',
-                $totalInserted,
-                $totalUpdated,
-                $totalSkipped
-            );
+            if ($dryRun) {
+                $successMessage = '✓ SIMULATION ERFOLGREICH';
+                if ($totalInserted === 0 && $totalUpdated === 0 && $totalSkipped === 0) {
+                    $successMessage .= ' (keine Daten gefunden)';
+                } else {
+                    $successMessage .= sprintf(
+                        ': %d würden eingefügt, %d würden aktualisiert, %d würden übersprungen.',
+                        $totalInserted,
+                        $totalUpdated,
+                        $totalSkipped
+                    );
+                }
+            } else {
+                $successMessage = 'Import abgeschlossen';
+                $successMessage .= sprintf(
+                    ': %d eingefügt, %d aktualisiert, %d übersprungen.',
+                    $totalInserted,
+                    $totalUpdated,
+                    $totalSkipped
+                );
+            }
             
             $this->Template->statusMessage = $successMessage;
             $this->Template->stats = $stats;

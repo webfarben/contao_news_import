@@ -359,10 +359,8 @@ class NewsImporter
 
     private function ensureMapTable(bool $dryRun): void
     {
-        if ($dryRun) {
-            return;
-        }
-
+        // Always create the map table for dry-run validation, but only commit in non-dry-run mode
+        // This ensures query analysis works correctly even in simulation mode
         $this->targetConnection->executeStatement(
             'CREATE TABLE IF NOT EXISTS tl_contao_import_map (
                 id INT UNSIGNED AUTO_INCREMENT NOT NULL,
