@@ -36,6 +36,20 @@ Contao-5-Bundle zum Import von Legacy-News aus einer externen Datenbank.
 php vendor/bin/contao-console contao:legacy-news:import
 ```
 
+## Import im Backend
+
+Nach der Installation erscheint im Contao-Backend unter `System` das Modul `News-Import`.
+
+Dort kannst du den Import ohne Konsole ausführen:
+
+- Archive-ID-Liste (kommagetrennt, optional)
+- Seit/Bis (YYYY-MM-DD oder Timestamp, optional)
+- Dry-Run
+- News/Inhalte vorab leeren
+- optional auch Archive leeren
+
+Nach dem Lauf wird die Tabelle mit Insert/Update/Skip-Werten direkt angezeigt.
+
 Optionen:
 
 - `--dry-run`: Nur simulieren, keine Daten schreiben.

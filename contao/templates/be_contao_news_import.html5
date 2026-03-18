@@ -1,0 +1,72 @@
+<div class="tl_listing_container">
+  <h2><?= $this->headline ?></h2>
+
+  <?php if ($this->statusMessage): ?>
+    <p class="tl_<?= $this->statusType === 'success' ? 'confirm' : 'error' ?>"><?= $this->statusMessage ?></p>
+  <?php endif; ?>
+
+  <form method="post" action="<?= $this->action ?>" class="tl_form tl_edit_form">
+    <input type="hidden" name="FORM_SUBMIT" value="tl_contao_news_import">
+    <input type="hidden" name="REQUEST_TOKEN" value="<?= $this->requestToken ?>">
+
+    <div class="tl_formbody_edit">
+      <div class="widget">
+        <h3><label for="archive_ids">Archive-IDs</label></h3>
+        <input type="text" id="archive_ids" name="archive_ids" class="tl_text" placeholder="z. B. 1,3,8" value="<?= \Contao\StringUtil::specialchars(\Contao\Input::post('archive_ids')) ?>">
+        <p class="tl_help">Leer lassen fuer alle Archive.</p>
+      </div>
+
+      <div class="widget">
+        <h3><label for="since">Seit</label></h3>
+        <input type="text" id="since" name="since" class="tl_text" placeholder="YYYY-MM-DD oder Timestamp" value="<?= \Contao\StringUtil::specialchars(\Contao\Input::post('since')) ?>">
+      </div>
+
+      <div class="widget">
+        <h3><label for="until">Bis</label></h3>
+        <input type="text" id="until" name="until" class="tl_text" placeholder="YYYY-MM-DD oder Timestamp" value="<?= \Contao\StringUtil::specialchars(\Contao\Input::post('until')) ?>">
+      </div>
+
+      <div class="widget checkbox_container">
+        <span><input type="checkbox" id="dry_run" name="dry_run" value="1"<?= \Contao\Input::post('dry_run') === '1' ? ' checked' : '' ?>> <label for="dry_run">Dry-Run (nur simulieren)</label></span>
+      </div>
+
+      <div class="widget checkbox_container">
+        <span><input type="checkbox" id="truncate" name="truncate" value="1"<?= \Contao\Input::post('truncate') === '1' ? ' checked' : '' ?>> <label for="truncate">Vor Import News und News-Inhalte loeschen</label></span>
+      </div>
+
+      <div class="widget checkbox_container">
+        <span><input type="checkbox" id="truncate_archives" name="truncate_archives" value="1"<?= \Contao\Input::post('truncate_archives') === '1' ? ' checked' : '' ?>> <label for="truncate_archives">Mitloeschen: Archive</label></span>
+      </div>
+    </div>
+
+    <div class="tl_formbody_submit">
+      <div class="tl_submit_container">
+        <button type="submit" class="tl_submit">Import starten</button>
+      </div>
+    </div>
+  </form>
+
+  <?php if (is_array($this->stats)): ?>
+    <h3>Ergebnis</h3>
+    <table class="tl_listing">
+      <thead>
+        <tr>
+          <th>Tabelle</th>
+          <th>Inserted</th>
+          <th>Updated</th>
+          <th>Skipped</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($this->stats as $table => $tableStats): ?>
+          <tr>
+            <td><?= $table ?></td>
+            <td><?= (int) $tableStats['inserted'] ?></td>
+            <td><?= (int) $tableStats['updated'] ?></td>
+            <td><?= (int) $tableStats['skipped'] ?></td>
+          </tr>
+        <?php endforeach; ?>
+      </tbody>
+    </table>
+  <?php endif; ?>
+</div>
