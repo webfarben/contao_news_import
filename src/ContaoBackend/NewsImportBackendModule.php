@@ -144,12 +144,24 @@ class NewsImportBackendModule extends BackendModule
             $importer = System::getContainer()->get(NewsImporter::class);
             $stats = $importer->import($options);
 
+            // Debug: Log stats structure
+            \error_log('ImportStats: ' . json_encode($stats, JSON_PRETTY_PRINT));
+
             $this->Template->statusType = 'success';
             
             // Build detailed success message
-            $totalInserted = array_sum(array_column($stats, 'inserted'));
-            $totalUpdated = array_sum(array_column($stats, 'updated'));
-            $totalSkipped = array_sum(array_column($stats, 'skipped'));
+            $totalInserted = (int) array_sum(array_column($stats, 'inserted'));
+            $totalUpdated = (int) array_sum(array_column($stats, 'updated'));
+            $totalSkipped = (int) array_sum(array_column($stats, 'skipped'));
+            
+            // Debug output
+            \error_log(sprintf(
+                'Import totals - Inserted: %d, Updated: %d, Skipped: %d, DryRun: %s',
+                $totalInserted,
+                $totalUpdated,
+                $totalSkipped,
+                $dryRun ? 'yes' : 'no'
+            ));
             
             if ($dryRun) {
                 $successMessage = '✓ SIMULATION ERFOLGREICH';
@@ -177,10 +189,14 @@ class NewsImportBackendModule extends BackendModule
             $this->Template->stats = $stats;
             $this->Template->formData = $formData;
         } catch (\Throwable $exception) {
+            \error_log('ImportError: ' . $exception->getMessage() . "\n" . $exception->getTraceAsString());
+            
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = sprintf(
-                'Import fehlgeschlagen: %s',
-                $exception->getMessage()
+                'Import fehlgeschlagen: %s (Datei: %s, Zeile: %d)',
+                $exception->getMessage(),
+                $exception->getFile(),
+                $exception->getLine()
             );
             $this->Template->formData = $formData;
         }

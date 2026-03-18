@@ -5,6 +5,15 @@
     <p class="tl_<?= $this->statusType === 'success' ? 'confirm' : 'error' ?>"><?= $this->statusMessage ?></p>
   <?php endif; ?>
 
+  <!-- Debug: Stats availability -->
+  <?php if ($this->statusType && !isset($this->stats)): ?>
+    <!-- Stats not initialized -->
+  <?php elseif ($this->statusType && isset($this->stats) && empty($this->stats)): ?>
+    <!-- Stats initialized but empty -->
+  <?php elseif ($this->statusType && isset($this->stats)): ?>
+    <!-- Stats initialized with data: <?= json_encode($this->stats) ?> -->
+  <?php endif; ?>
+
   <form method="post" action="<?= $this->action ?>" class="tl_form tl_edit_form">
     <input type="hidden" name="FORM_SUBMIT" value="tl_contao_news_import">
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $this->requestToken ?>">
@@ -79,7 +88,7 @@
     </div>
   </form>
 
-  <?php if (is_array($this->stats)): ?>
+  <?php if (is_array($this->stats) && !empty($this->stats)): ?>
     <h3>Ergebnis</h3>
     <table class="tl_listing">
       <thead>
