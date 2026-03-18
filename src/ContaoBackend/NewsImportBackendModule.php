@@ -6,6 +6,7 @@ namespace Sebastian\ContaoImport\ContaoBackend;
 
 use Contao\BackendModule;
 use Contao\Config;
+use Contao\Controller;
 use Contao\Environment;
 use Contao\Input;
 use Contao\StringUtil;
@@ -51,6 +52,9 @@ class NewsImportBackendModule extends BackendModule
             $feedback = $this->consumeFeedback();
             $this->Template->statusType = $feedback['type'];
             $this->Template->statusMessage = $feedback['message'];
+            $resultState = $this->consumeResultState();
+            $this->Template->stats = $resultState['stats'];
+            $this->Template->showNoImportInfo = $resultState['showNoImportInfo'];
 
             return;
         }
@@ -72,8 +76,8 @@ class NewsImportBackendModule extends BackendModule
         if (null === $legacyDatabaseUrl) {
             $this->setFeedback('error', 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.');
             $this->persistFormData($formData);
-            $this->Template->formData = $formData;
-
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
             return;
         }
 
@@ -88,7 +92,8 @@ class NewsImportBackendModule extends BackendModule
                 $this->setFeedback('error', 'Verbindung fehlgeschlagen: ' . $e->getMessage());
             }
             $this->persistFormData($formData);
-            $this->Template->formData = $formData;
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
             return;
         }
 
@@ -99,8 +104,8 @@ class NewsImportBackendModule extends BackendModule
         } catch (\Throwable $e) {
             $this->setFeedback('error', 'Verbindung zur Quelldatenbank fehlgeschlagen: ' . $e->getMessage());
             $this->persistFormData($formData);
-            $this->Template->formData = $formData;
-
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
             return;
         }
 
@@ -115,8 +120,8 @@ class NewsImportBackendModule extends BackendModule
         if ($truncateArchives && !$truncate) {
             $this->setFeedback('error', 'Die Option "Archive loeschen" funktioniert nur zusammen mit "News/Inhalte leeren".');
             $this->persistFormData($formData);
-            $this->Template->formData = $formData;
-
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
             return;
         }
 
@@ -125,8 +130,8 @@ class NewsImportBackendModule extends BackendModule
         if (null === $archiveIds) {
             $this->setFeedback('error', 'Archive-ID-Liste ist ungueltig. Bitte kommagetrennte Zahlen eintragen.');
             $this->persistFormData($formData);
-            $this->Template->formData = $formData;
-
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
             return;
         }
 
@@ -136,16 +141,16 @@ class NewsImportBackendModule extends BackendModule
         if (false === $since || false === $until) {
             $this->setFeedback('error', 'Datumswerte muessen YYYY-MM-DD oder Unix-Timestamp sein.');
             $this->persistFormData($formData);
-            $this->Template->formData = $formData;
-
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
             return;
         }
 
         if (null !== $since && null !== $until && $since > $until) {
             $this->setFeedback('error', '"Seit" darf nicht groesser als "Bis" sein.');
             $this->persistFormData($formData);
-            $this->Template->formData = $formData;
-
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
             return;
         }
 
@@ -192,11 +197,10 @@ class NewsImportBackendModule extends BackendModule
 
             $this->setFeedback('success', $successMessage);
             $this->persistFormData($formData);
-            $this->Template->statusMessage = $successMessage;
-            $this->Template->statusType = 'success';
-            $this->Template->stats = $stats;
-            $this->Template->showNoImportInfo = !$dryRun && 0 === $totalInserted && 0 === $totalUpdated && 0 === $totalSkipped;
-            $this->Template->formData = $formData;
+            $showNoImportInfo = !$dryRun && 0 === $totalInserted && 0 === $totalUpdated && 0 === $totalSkipped;
+            $this->persistResultState($stats, $showNoImportInfo);
+            $this->redirectAfterSubmit();
+            return;
         } catch (\Throwable $exception) {
             $message = sprintf(
                 'Import fehlgeschlagen: %s (Datei: %s, Zeile: %d)',
@@ -206,9 +210,9 @@ class NewsImportBackendModule extends BackendModule
             );
             $this->setFeedback('error', $message);
             $this->persistFormData($formData);
-            $this->Template->statusType = 'error';
-            $this->Template->statusMessage = $message;
-            $this->Template->formData = $formData;
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
+            return;
         }
     }
 
@@ -280,6 +284,40 @@ class NewsImportBackendModule extends BackendModule
         Config::persist('contaoNewsImportLastStatusMessage', '');
 
         return ['type' => $type, 'message' => $message];
+    }
+
+    /**
+     * @param array<string, array<string, int>>|null $stats
+     */
+    private function persistResultState(?array $stats, bool $showNoImportInfo): void
+    {
+        $_SESSION['contao_news_import_result_state'] = [
+            'stats' => $stats,
+            'showNoImportInfo' => $showNoImportInfo,
+        ];
+    }
+
+    /**
+     * @return array{stats: array<string, array<string, int>>|null, showNoImportInfo: bool}
+     */
+    private function consumeResultState(): array
+    {
+        $result = $_SESSION['contao_news_import_result_state'] ?? null;
+        unset($_SESSION['contao_news_import_result_state']);
+
+        if (!\is_array($result)) {
+            return ['stats' => null, 'showNoImportInfo' => false];
+        }
+
+        return [
+            'stats' => isset($result['stats']) && \is_array($result['stats']) ? $result['stats'] : null,
+            'showNoImportInfo' => !empty($result['showNoImportInfo']),
+        ];
+    }
+
+    private function redirectAfterSubmit(): void
+    {
+        Controller::redirect(Environment::get('requestUri'));
     }
 
     private function inputValue(string $name, string $default): string
