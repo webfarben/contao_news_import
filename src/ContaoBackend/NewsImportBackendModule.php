@@ -45,6 +45,9 @@ class NewsImportBackendModule extends BackendModule
         $this->Template->messages = '';
 
         if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT')) {
+            $feedback = $this->consumeFeedback();
+            $this->Template->statusType = $feedback['type'];
+            $this->Template->statusMessage = $feedback['message'];
             $this->clearTransientState();
 
             return;
@@ -251,16 +254,35 @@ class NewsImportBackendModule extends BackendModule
     {
         Config::persist('contaoNewsImportLastStatusType', $type);
         Config::persist('contaoNewsImportLastStatusMessage', $message);
+        Config::persist('contaoNewsImportLastStatusPending', '1');
 
         $this->Template->statusType = $type;
         $this->Template->statusMessage = $message;
         $this->Template->messages = '';
     }
 
-    private function clearTransientState(): void
+    /**
+     * @return array{type: string, message: string}
+     */
+    private function consumeFeedback(): array
     {
+        if ('1' !== (string) Config::get('contaoNewsImportLastStatusPending')) {
+            return ['type' => '', 'message' => ''];
+        }
+
+        $type = (string) Config::get('contaoNewsImportLastStatusType');
+        $message = (string) Config::get('contaoNewsImportLastStatusMessage');
+
+        Config::persist('contaoNewsImportLastStatusPending', '');
         Config::persist('contaoNewsImportLastStatusType', '');
         Config::persist('contaoNewsImportLastStatusMessage', '');
+
+        return ['type' => $type, 'message' => $message];
+    }
+
+    private function clearTransientState(): void
+    {
+        Config::persist('contaoNewsImportLastStatusPending', '');
         Config::persist('contaoNewsImportLastArchiveIds', '');
         Config::persist('contaoNewsImportLastSince', '');
         Config::persist('contaoNewsImportLastUntil', '');
