@@ -41,6 +41,10 @@ class NewsImporter
     {
         $legacy = $this->legacyConnectionFactory->getConnection($options->legacyDatabaseUrl);
 
+        // MySQL DDL (CREATE TABLE) causes an implicit commit.
+        // Ensure the map table exists before opening a transactional import.
+        $this->ensureMapTable();
+
         if ($options->dryRun) {
             return $this->runImport($legacy, $options);
         }
@@ -60,8 +64,6 @@ class NewsImporter
             'tl_news' => ['inserted' => 0, 'updated' => 0, 'skipped' => 0],
             'tl_content' => ['inserted' => 0, 'updated' => 0, 'skipped' => 0],
         ];
-
-        $this->ensureMapTable($options->dryRun);
 
         if ($options->truncate) {
             if (!$options->dryRun) {
@@ -357,10 +359,9 @@ class NewsImporter
         return $row;
     }
 
-    private function ensureMapTable(bool $dryRun): void
+    private function ensureMapTable(): void
     {
-        // Always create the map table for dry-run validation, but only commit in non-dry-run mode
-        // This ensures query analysis works correctly even in simulation mode
+        // Keep this DDL outside transactional import execution.
         $this->targetConnection->executeStatement(
             'CREATE TABLE IF NOT EXISTS tl_contao_import_map (
                 id INT UNSIGNED AUTO_INCREMENT NOT NULL,
