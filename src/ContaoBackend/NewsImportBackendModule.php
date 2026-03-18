@@ -62,6 +62,24 @@ class NewsImportBackendModule extends BackendModule
         if (null === $legacyDatabaseUrl) {
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.';
+            $this->Template->formData = $formData;
+
+            return;
+        }
+
+        // Test connection before proceeding
+        try {
+            $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
+            $testConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
+            // Simple query to verify connection works
+            $testConnection->executeQuery('SELECT 1');
+        } catch (\Throwable $e) {
+            $this->Template->statusType = 'error';
+            $this->Template->statusMessage = sprintf(
+                'Verbindung zur Quelldatenbank fehlgeschlagen: %s',
+                $e->getMessage()
+            );
+            $this->Template->formData = $formData;
 
             return;
         }
@@ -77,6 +95,7 @@ class NewsImportBackendModule extends BackendModule
         if ($truncateArchives && !$truncate) {
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = 'Die Option "Archive loeschen" funktioniert nur zusammen mit "News/Inhalte leeren".';
+            $this->Template->formData = $formData;
 
             return;
         }
@@ -86,6 +105,7 @@ class NewsImportBackendModule extends BackendModule
         if (null === $archiveIds) {
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = 'Archive-ID-Liste ist ungueltig. Bitte kommagetrennte Zahlen eintragen.';
+            $this->Template->formData = $formData;
 
             return;
         }
@@ -96,6 +116,7 @@ class NewsImportBackendModule extends BackendModule
         if (false === $since || false === $until) {
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = 'Datumswerte muessen YYYY-MM-DD oder Unix-Timestamp sein.';
+            $this->Template->formData = $formData;
 
             return;
         }
@@ -103,6 +124,7 @@ class NewsImportBackendModule extends BackendModule
         if (null !== $since && null !== $until && $since > $until) {
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = '"Seit" darf nicht groesser als "Bis" sein.';
+            $this->Template->formData = $formData;
 
             return;
         }
@@ -123,11 +145,30 @@ class NewsImportBackendModule extends BackendModule
             $stats = $importer->import($options);
 
             $this->Template->statusType = 'success';
-            $this->Template->statusMessage = $dryRun ? 'Simulation abgeschlossen.' : 'Import abgeschlossen.';
+            $successMessage = $dryRun ? 'Simulation abgeschlossen.' : 'Import abgeschlossen.';
+            
+            // Show summary of results
+            $totalInserted = array_sum(array_column($stats, 'inserted'));
+            $totalUpdated = array_sum(array_column($stats, 'updated'));
+            $totalSkipped = array_sum(array_column($stats, 'skipped'));
+            
+            $successMessage .= sprintf(
+                ' Gesamt: %d eingefuegt, %d aktualisiert, %d uebersprungen.',
+                $totalInserted,
+                $totalUpdated,
+                $totalSkipped
+            );
+            
+            $this->Template->statusMessage = $successMessage;
             $this->Template->stats = $stats;
+            $this->Template->formData = $formData;
         } catch (\Throwable $exception) {
             $this->Template->statusType = 'error';
-            $this->Template->statusMessage = $exception->getMessage();
+            $this->Template->statusMessage = sprintf(
+                'Import fehlgeschlagen: %s',
+                $exception->getMessage()
+            );
+            $this->Template->formData = $formData;
         }
     }
 

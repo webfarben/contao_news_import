@@ -85,15 +85,15 @@
       <thead>
         <tr>
           <th>Tabelle</th>
-          <th>Inserted</th>
-          <th>Updated</th>
-          <th>Skipped</th>
+          <th>Eingefuegt</th>
+          <th>Aktualisiert</th>
+          <th>Uebersprungen</th>
         </tr>
       </thead>
       <tbody>
         <?php foreach ($this->stats as $table => $tableStats): ?>
           <tr>
-            <td><?= $table ?></td>
+            <td><?= htmlspecialchars($table) ?></td>
             <td><?= (int) $tableStats['inserted'] ?></td>
             <td><?= (int) $tableStats['updated'] ?></td>
             <td><?= (int) $tableStats['skipped'] ?></td>
@@ -101,5 +101,7 @@
         <?php endforeach; ?>
       </tbody>
     </table>
+  <?php elseif ($this->statusType === 'success'): ?>
+    <p class="tl_info">Kein Import durchgefuehrt (moegliche Ursachen: keine Daten gefunden, truncate-Option nicht aktiviert).</p>
   <?php endif; ?>
 </div>
