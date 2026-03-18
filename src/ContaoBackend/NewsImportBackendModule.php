@@ -304,7 +304,7 @@ class NewsImportBackendModule extends BackendModule
         }
 
         return sprintf(
-            'mysql://%s:%s@%s:%d/%s?charset=utf8mb4',
+            'pdo-mysql://%s:%s@%s:%d/%s?charset=utf8mb4',
             rawurlencode($user),
             rawurlencode($password),
             $host,

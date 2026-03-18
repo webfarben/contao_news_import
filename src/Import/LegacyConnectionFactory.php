@@ -6,6 +6,7 @@ namespace Sebastian\ContaoImport\Import;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Tools\DsnParser;
 
 class LegacyConnectionFactory
 {
@@ -31,10 +32,20 @@ class LegacyConnectionFactory
             return $this->connections[$cacheKey];
         }
 
-        $this->connections[$cacheKey] = DriverManager::getConnection([
-            'url' => $databaseUrl,
-        ]);
+        $this->connections[$cacheKey] = DriverManager::getConnection($this->parseConnectionParams($databaseUrl));
 
         return $this->connections[$cacheKey];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function parseConnectionParams(string $databaseUrl): array
+    {
+        $dsnParser = new DsnParser([
+            'mysql' => 'pdo_mysql',
+        ]);
+
+        return $dsnParser->parse($databaseUrl);
     }
 }

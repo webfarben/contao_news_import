@@ -27,7 +27,7 @@ Contao-5-Bundle zum Import von Legacy-News aus einer externen Datenbank.
 3. Legacy-DB in der `.env.local` des Contao-Projekts konfigurieren:
 
    ```dotenv
-   LEGACY_DATABASE_URL="mysql://user:pass@127.0.0.1:3306/legacy_db"
+   LEGACY_DATABASE_URL="pdo-mysql://user:pass@127.0.0.1:3306/legacy_db"
    ```
 
 ## Import ausführen
