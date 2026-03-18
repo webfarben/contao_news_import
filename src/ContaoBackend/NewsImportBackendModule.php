@@ -199,8 +199,6 @@ class NewsImportBackendModule extends BackendModule
             $this->persistFormData($formData);
             $showNoImportInfo = !$dryRun && 0 === $totalInserted && 0 === $totalUpdated && 0 === $totalSkipped;
             $this->persistResultState($stats, $showNoImportInfo);
-            $this->redirectAfterSubmit();
-            return;
         } catch (\Throwable $exception) {
             $message = sprintf(
                 'Import fehlgeschlagen: %s (Datei: %s, Zeile: %d)',
@@ -211,9 +209,10 @@ class NewsImportBackendModule extends BackendModule
             $this->setFeedback('error', $message);
             $this->persistFormData($formData);
             $this->persistResultState(null, false);
-            $this->redirectAfterSubmit();
-            return;
         }
+
+        $this->redirectAfterSubmit();
+        return;
     }
 
     /**
