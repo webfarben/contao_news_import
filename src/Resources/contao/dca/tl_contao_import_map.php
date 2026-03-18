@@ -8,7 +8,7 @@ $GLOBALS['TL_DCA']['tl_contao_import_map'] = [
         'sql' => [
             'keys' => [
                 'id' => 'primary',
-                'source_target' => 'unique (source_table,source_id,target_table)',
+                'source_table,source_id,target_table' => 'unique',
             ],
         ],
     ],
