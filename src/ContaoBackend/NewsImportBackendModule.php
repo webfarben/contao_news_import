@@ -20,20 +20,29 @@ class NewsImportBackendModule extends BackendModule
 
     protected function compile(): void
     {
+        $storedFormData = $this->consumeStoredFormData();
+
         $formData = [
-            'source_host' => $this->inputValue('source_host', (string) Config::get('contaoNewsImportSourceHost')),
-            'source_port' => $this->inputValue('source_port', (string) Config::get('contaoNewsImportSourcePort')),
-            'source_database' => $this->inputValue('source_database', (string) Config::get('contaoNewsImportSourceDatabase')),
-            'source_user' => $this->inputValue('source_user', (string) Config::get('contaoNewsImportSourceUser')),
-            'source_password' => $this->inputValue('source_password', (string) Config::get('contaoNewsImportSourcePassword')),
-            'archive_ids' => $this->inputValue('archive_ids', ''),
-            'since' => $this->inputValue('since', ''),
-            'until' => $this->inputValue('until', ''),
+            'source_host' => $this->inputValue('source_host', (string) ($storedFormData['source_host'] ?? Config::get('contaoNewsImportSourceHost'))),
+            'source_port' => $this->inputValue('source_port', (string) ($storedFormData['source_port'] ?? Config::get('contaoNewsImportSourcePort'))),
+            'source_database' => $this->inputValue('source_database', (string) ($storedFormData['source_database'] ?? Config::get('contaoNewsImportSourceDatabase'))),
+            'source_user' => $this->inputValue('source_user', (string) ($storedFormData['source_user'] ?? Config::get('contaoNewsImportSourceUser'))),
+            'source_password' => $this->inputValue('source_password', (string) ($storedFormData['source_password'] ?? Config::get('contaoNewsImportSourcePassword'))),
+            'archive_ids' => $this->inputValue('archive_ids', (string) ($storedFormData['archive_ids'] ?? '')),
+            'since' => $this->inputValue('since', (string) ($storedFormData['since'] ?? '')),
+            'until' => $this->inputValue('until', (string) ($storedFormData['until'] ?? '')),
             'dry_run' => '1' === Input::post('dry_run'),
             'truncate' => '1' === Input::post('truncate'),
             'truncate_archives' => '1' === Input::post('truncate_archives'),
             'save_credentials' => '1' === Input::post('save_credentials'),
         ];
+
+        if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT') && [] !== $storedFormData) {
+            $formData['dry_run'] = (bool) ($storedFormData['dry_run'] ?? false);
+            $formData['truncate'] = (bool) ($storedFormData['truncate'] ?? false);
+            $formData['truncate_archives'] = (bool) ($storedFormData['truncate_archives'] ?? false);
+            $formData['save_credentials'] = (bool) ($storedFormData['save_credentials'] ?? false);
+        }
 
         $this->Template->headline = 'Legacy-News-Import';
         $this->Template->action = StringUtil::ampersand(Environment::get('request'));
@@ -64,6 +73,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null === $legacyDatabaseUrl) {
             $this->setFeedback('error', 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.');
+            $this->storeFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -79,6 +89,7 @@ class NewsImportBackendModule extends BackendModule
             } catch (\Throwable $e) {
                 $this->setFeedback('error', 'Verbindung fehlgeschlagen: ' . $e->getMessage());
             }
+            $this->storeFormData($formData);
             $this->Template->formData = $formData;
             return;
         }
@@ -89,6 +100,7 @@ class NewsImportBackendModule extends BackendModule
             $testConnection->executeQuery('SELECT 1');
         } catch (\Throwable $e) {
             $this->setFeedback('error', 'Verbindung zur Quelldatenbank fehlgeschlagen: ' . $e->getMessage());
+            $this->storeFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -104,6 +116,7 @@ class NewsImportBackendModule extends BackendModule
 
         if ($truncateArchives && !$truncate) {
             $this->setFeedback('error', 'Die Option "Archive loeschen" funktioniert nur zusammen mit "News/Inhalte leeren".');
+            $this->storeFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -113,6 +126,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null === $archiveIds) {
             $this->setFeedback('error', 'Archive-ID-Liste ist ungueltig. Bitte kommagetrennte Zahlen eintragen.');
+            $this->storeFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -123,6 +137,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (false === $since || false === $until) {
             $this->setFeedback('error', 'Datumswerte muessen YYYY-MM-DD oder Unix-Timestamp sein.');
+            $this->storeFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -130,6 +145,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null !== $since && null !== $until && $since > $until) {
             $this->setFeedback('error', '"Seit" darf nicht groesser als "Bis" sein.');
+            $this->storeFormData($formData);
             $this->Template->formData = $formData;
 
             return;
@@ -177,6 +193,7 @@ class NewsImportBackendModule extends BackendModule
             }
 
             $this->setFeedback('success', $successMessage);
+            $this->storeFormData($formData);
             $this->Template->statusMessage = $successMessage;
             $this->Template->statusType = 'success';
             $this->Template->stats = $stats;
@@ -189,10 +206,34 @@ class NewsImportBackendModule extends BackendModule
                 $exception->getLine()
             );
             $this->setFeedback('error', $message);
+            $this->storeFormData($formData);
             $this->Template->statusType = 'error';
             $this->Template->statusMessage = $message;
             $this->Template->formData = $formData;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $formData
+     */
+    private function storeFormData(array $formData): void
+    {
+        $_SESSION['contao_news_import_form_data'] = $formData;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function consumeStoredFormData(): array
+    {
+        if (!isset($_SESSION['contao_news_import_form_data']) || !is_array($_SESSION['contao_news_import_form_data'])) {
+            return [];
+        }
+
+        $formData = $_SESSION['contao_news_import_form_data'];
+        unset($_SESSION['contao_news_import_form_data']);
+
+        return $formData;
     }
 
     private function setFeedback(string $type, string $message): void
