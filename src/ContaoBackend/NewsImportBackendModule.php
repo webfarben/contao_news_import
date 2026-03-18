@@ -19,41 +19,34 @@ class NewsImportBackendModule extends BackendModule
 
     protected function compile(): void
     {
-        $storedFormData = $this->loadPersistedFormData();
-
         $formData = [
-            'source_host' => $this->inputValue('source_host', (string) ($storedFormData['source_host'] ?? Config::get('contaoNewsImportSourceHost'))),
-            'source_port' => $this->inputValue('source_port', (string) ($storedFormData['source_port'] ?? Config::get('contaoNewsImportSourcePort'))),
-            'source_database' => $this->inputValue('source_database', (string) ($storedFormData['source_database'] ?? Config::get('contaoNewsImportSourceDatabase'))),
-            'source_user' => $this->inputValue('source_user', (string) ($storedFormData['source_user'] ?? Config::get('contaoNewsImportSourceUser'))),
-            'source_password' => $this->inputValue('source_password', (string) ($storedFormData['source_password'] ?? Config::get('contaoNewsImportSourcePassword'))),
-            'archive_ids' => $this->inputValue('archive_ids', (string) ($storedFormData['archive_ids'] ?? '')),
-            'since' => $this->inputValue('since', (string) ($storedFormData['since'] ?? '')),
-            'until' => $this->inputValue('until', (string) ($storedFormData['until'] ?? '')),
+            'source_host' => $this->inputValue('source_host', (string) Config::get('contaoNewsImportSourceHost')),
+            'source_port' => $this->inputValue('source_port', (string) Config::get('contaoNewsImportSourcePort')),
+            'source_database' => $this->inputValue('source_database', (string) Config::get('contaoNewsImportSourceDatabase')),
+            'source_user' => $this->inputValue('source_user', (string) Config::get('contaoNewsImportSourceUser')),
+            'source_password' => $this->inputValue('source_password', (string) Config::get('contaoNewsImportSourcePassword')),
+            'archive_ids' => $this->inputValue('archive_ids', ''),
+            'since' => $this->inputValue('since', ''),
+            'until' => $this->inputValue('until', ''),
             'dry_run' => '1' === Input::post('dry_run'),
             'truncate' => '1' === Input::post('truncate'),
             'truncate_archives' => '1' === Input::post('truncate_archives'),
             'save_credentials' => '1' === Input::post('save_credentials'),
         ];
 
-        if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT') && [] !== $storedFormData) {
-            $formData['dry_run'] = (bool) ($storedFormData['dry_run'] ?? false);
-            $formData['truncate'] = (bool) ($storedFormData['truncate'] ?? false);
-            $formData['truncate_archives'] = (bool) ($storedFormData['truncate_archives'] ?? false);
-            $formData['save_credentials'] = (bool) ($storedFormData['save_credentials'] ?? false);
-        }
-
         $this->Template->headline = 'Legacy-News-Import';
         $this->Template->action = StringUtil::ampersand(Environment::get('request'));
         $this->Template->requestToken = $this->resolveRequestToken();
-        $this->Template->statusMessage = (string) Config::get('contaoNewsImportLastStatusMessage');
-        $this->Template->statusType = (string) Config::get('contaoNewsImportLastStatusType');
+        $this->Template->statusMessage = '';
+        $this->Template->statusType = '';
         $this->Template->stats = null;
         $this->Template->showNoImportInfo = false;
         $this->Template->formData = $formData;
         $this->Template->messages = '';
 
         if ('tl_contao_news_import' !== Input::post('FORM_SUBMIT')) {
+            $this->clearTransientState();
+
             return;
         }
 
@@ -262,6 +255,19 @@ class NewsImportBackendModule extends BackendModule
         $this->Template->statusType = $type;
         $this->Template->statusMessage = $message;
         $this->Template->messages = '';
+    }
+
+    private function clearTransientState(): void
+    {
+        Config::persist('contaoNewsImportLastStatusType', '');
+        Config::persist('contaoNewsImportLastStatusMessage', '');
+        Config::persist('contaoNewsImportLastArchiveIds', '');
+        Config::persist('contaoNewsImportLastSince', '');
+        Config::persist('contaoNewsImportLastUntil', '');
+        Config::persist('contaoNewsImportLastDryRun', '');
+        Config::persist('contaoNewsImportLastTruncate', '');
+        Config::persist('contaoNewsImportLastTruncateArchives', '');
+        Config::persist('contaoNewsImportLastSaveCredentials', '');
     }
 
     private function inputValue(string $name, string $default): string
