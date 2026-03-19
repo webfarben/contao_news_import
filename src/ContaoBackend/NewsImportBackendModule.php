@@ -20,6 +20,15 @@ class NewsImportBackendModule extends BackendModule
     protected function compile(): void
     {
         $isSubmit = 'tl_contao_news_import' === Input::post('FORM_SUBMIT');
+
+        // DEBUG – temporaer, nach Analyse entfernen
+        error_log(sprintf(
+            '[ContaoImport] compile() called | REQUEST_METHOD=%s | FORM_SUBMIT=%s | isSubmit=%s | action=%s',
+            $_SERVER['REQUEST_METHOD'] ?? '?',
+            (string) Input::post('FORM_SUBMIT'),
+            $isSubmit ? 'true' : 'false',
+            (string) Input::post('action')
+        ));
         $storedFormData = $this->loadPersistedFormData();
 
         $formData = [
@@ -48,8 +57,13 @@ class NewsImportBackendModule extends BackendModule
         $this->Template->messages = '';
 
         if (!$isSubmit) {
+            // DEBUG
+            error_log('[ContaoImport] Not a submit – rendering empty form.');
             return;
         }
+
+        // DEBUG
+        error_log('[ContaoImport] Submit detected – processing action: ' . (string) Input::post('action'));
 
         $dryRun = $formData['dry_run'];
         $truncate = $formData['truncate'];
