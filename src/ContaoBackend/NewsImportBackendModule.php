@@ -28,7 +28,7 @@ class NewsImportBackendModule extends BackendModule
             'source_port' => $this->inputValue('source_port', (string) ($storedFormData['source_port'] ?? Config::get('contaoNewsImportSourcePort'))),
             'source_database' => $this->inputValue('source_database', (string) ($storedFormData['source_database'] ?? Config::get('contaoNewsImportSourceDatabase'))),
             'source_user' => $this->inputValue('source_user', (string) ($storedFormData['source_user'] ?? Config::get('contaoNewsImportSourceUser'))),
-            'source_password' => $this->inputValue('source_password', (string) ($storedFormData['source_password'] ?? Config::get('contaoNewsImportSourcePassword'))),
+            'source_password' => $this->inputValue('source_password', (string) ($storedFormData['source_password'] ?? '')),
             'archive_ids' => $this->inputValue('archive_ids', (string) ($storedFormData['archive_ids'] ?? '')),
             'since' => $this->inputValue('since', (string) ($storedFormData['since'] ?? '')),
             'until' => $this->inputValue('until', (string) ($storedFormData['until'] ?? '')),
@@ -37,6 +37,11 @@ class NewsImportBackendModule extends BackendModule
             'truncate_archives' => $isSubmit ? '1' === Input::post('truncate_archives') : (bool) ($storedFormData['truncate_archives'] ?? false),
             'save_credentials' => $isSubmit ? '1' === Input::post('save_credentials') : (bool) ($storedFormData['save_credentials'] ?? false),
         ];
+
+        if ($isSubmit && '' === (string) $formData['source_password']) {
+            // Erlaubt weiterhin gespeicherte Zugangsdaten, ohne das Passwort beim spaeteren Seitenaufruf vorzubefuellen.
+            $formData['source_password'] = (string) Config::get('contaoNewsImportSourcePassword');
+        }
 
         $this->Template->headline = 'Legacy-News-Import';
         $this->Template->action = StringUtil::ampersand(Environment::get('request'));
@@ -63,6 +68,7 @@ class NewsImportBackendModule extends BackendModule
         $truncateArchives = $formData['truncate_archives'];
         $saveCredentials = $formData['save_credentials'];
         $action = (string) Input::post('action');
+        $rememberPassword = 'test_connection' === $action || ('run_import' === $action && $dryRun);
 
         $legacyDatabaseUrl = $this->buildLegacyDatabaseUrl(
             (string) $formData['source_host'],
@@ -74,7 +80,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null === $legacyDatabaseUrl) {
             $this->setFlash('error', 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.');
-            $this->persistFormData($formData);
+            $this->persistFormData($formData, $rememberPassword);
             $this->persistResultState(null, false);
             $this->redirectAfterSubmit();
             return;
@@ -90,7 +96,7 @@ class NewsImportBackendModule extends BackendModule
             } catch (\Throwable $e) {
                 $this->setFlash('error', 'Verbindung fehlgeschlagen: ' . $e->getMessage());
             }
-            $this->persistFormData($formData);
+            $this->persistFormData($formData, true);
             $this->persistResultState(null, false);
             $this->redirectAfterSubmit();
             return;
@@ -102,7 +108,7 @@ class NewsImportBackendModule extends BackendModule
             $testConnection->executeQuery('SELECT 1');
         } catch (\Throwable $e) {
             $this->setFlash('error', 'Verbindung zur Quelldatenbank fehlgeschlagen: ' . $e->getMessage());
-            $this->persistFormData($formData);
+            $this->persistFormData($formData, $rememberPassword);
             $this->persistResultState(null, false);
             $this->redirectAfterSubmit();
             return;
@@ -118,7 +124,7 @@ class NewsImportBackendModule extends BackendModule
 
         if ($truncateArchives && !$truncate) {
             $this->setFlash('error', 'Die Option "Archive loeschen" funktioniert nur zusammen mit "News/Inhalte leeren".');
-            $this->persistFormData($formData);
+            $this->persistFormData($formData, $rememberPassword);
             $this->persistResultState(null, false);
             $this->redirectAfterSubmit();
             return;
@@ -128,7 +134,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null === $archiveIds) {
             $this->setFlash('error', 'Archive-ID-Liste ist ungueltig. Bitte kommagetrennte Zahlen eintragen.');
-            $this->persistFormData($formData);
+            $this->persistFormData($formData, $rememberPassword);
             $this->persistResultState(null, false);
             $this->redirectAfterSubmit();
             return;
@@ -139,7 +145,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (false === $since || false === $until) {
             $this->setFlash('error', 'Datumswerte muessen YYYY-MM-DD oder Unix-Timestamp sein.');
-            $this->persistFormData($formData);
+            $this->persistFormData($formData, $rememberPassword);
             $this->persistResultState(null, false);
             $this->redirectAfterSubmit();
             return;
@@ -147,7 +153,7 @@ class NewsImportBackendModule extends BackendModule
 
         if (null !== $since && null !== $until && $since > $until) {
             $this->setFlash('error', '"Seit" darf nicht groesser als "Bis" sein.');
-            $this->persistFormData($formData);
+            $this->persistFormData($formData, $rememberPassword);
             $this->persistResultState(null, false);
             $this->redirectAfterSubmit();
             return;
@@ -208,20 +214,20 @@ class NewsImportBackendModule extends BackendModule
             $this->persistResultState(null, false);
         }
 
-        $this->persistFormData($formData);
+        $this->persistFormData($formData, $rememberPassword);
         $this->redirectAfterSubmit();
     }
 
     /**
      * @param array<string, mixed> $formData
      */
-    private function persistFormData(array $formData): void
+    private function persistFormData(array $formData, bool $rememberPassword = false): void
     {
         Config::persist('contaoNewsImportLastSourceHost', (string) ($formData['source_host'] ?? ''));
         Config::persist('contaoNewsImportLastSourcePort', (string) ($formData['source_port'] ?? ''));
         Config::persist('contaoNewsImportLastSourceDatabase', (string) ($formData['source_database'] ?? ''));
         Config::persist('contaoNewsImportLastSourceUser', (string) ($formData['source_user'] ?? ''));
-        Config::persist('contaoNewsImportLastSourcePassword', (string) ($formData['source_password'] ?? ''));
+        Config::persist('contaoNewsImportLastSourcePassword', '');
         Config::persist('contaoNewsImportLastArchiveIds', (string) ($formData['archive_ids'] ?? ''));
         Config::persist('contaoNewsImportLastSince', (string) ($formData['since'] ?? ''));
         Config::persist('contaoNewsImportLastUntil', (string) ($formData['until'] ?? ''));
@@ -229,6 +235,13 @@ class NewsImportBackendModule extends BackendModule
         Config::persist('contaoNewsImportLastTruncate', !empty($formData['truncate']) ? '1' : '');
         Config::persist('contaoNewsImportLastTruncateArchives', !empty($formData['truncate_archives']) ? '1' : '');
         Config::persist('contaoNewsImportLastSaveCredentials', !empty($formData['save_credentials']) ? '1' : '');
+
+        if ($rememberPassword && !empty($formData['source_password'])) {
+            $_SESSION['contao_news_import_temp_source_password'] = (string) $formData['source_password'];
+            return;
+        }
+
+        unset($_SESSION['contao_news_import_temp_source_password']);
     }
 
     /**
@@ -241,7 +254,7 @@ class NewsImportBackendModule extends BackendModule
             'source_port' => (string) Config::get('contaoNewsImportLastSourcePort'),
             'source_database' => (string) Config::get('contaoNewsImportLastSourceDatabase'),
             'source_user' => (string) Config::get('contaoNewsImportLastSourceUser'),
-            'source_password' => (string) Config::get('contaoNewsImportLastSourcePassword'),
+            'source_password' => $this->consumeTemporarySourcePassword(),
             'archive_ids' => (string) Config::get('contaoNewsImportLastArchiveIds'),
             'since' => (string) Config::get('contaoNewsImportLastSince'),
             'until' => (string) Config::get('contaoNewsImportLastUntil'),
@@ -250,6 +263,14 @@ class NewsImportBackendModule extends BackendModule
             'truncate_archives' => '1' === (string) Config::get('contaoNewsImportLastTruncateArchives'),
             'save_credentials' => '1' === (string) Config::get('contaoNewsImportLastSaveCredentials'),
         ];
+    }
+
+    private function consumeTemporarySourcePassword(): string
+    {
+        $password = (string) ($_SESSION['contao_news_import_temp_source_password'] ?? '');
+        unset($_SESSION['contao_news_import_temp_source_password']);
+
+        return $password;
     }
 
     private function setFlash(string $type, string $message): void

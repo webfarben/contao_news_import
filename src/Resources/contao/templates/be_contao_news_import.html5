@@ -1,53 +1,85 @@
 <div class="tl_listing_container">
+  <style>
+    .ci-section-title {
+      margin: 20px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .ci-feedback-panel {
+      margin: 12px 0 18px;
+    }
+
+    .ci-source-actions {
+      margin: 10px 0 4px;
+    }
+
+    .ci-result-panel {
+      margin-top: 18px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+    }
+
+    .ci-result-panel .tl_listing {
+      margin-top: 8px;
+    }
+  </style>
+
   <h2><?= $this->headline ?></h2>
 
-  <?php if ($this->statusMessage): ?>
-    <?php if ($this->statusType === 'error'): ?>
-      <div class="tl_error" style="padding: 12px; margin-bottom: 16px;">
-        <?= \Contao\StringUtil::specialchars((string) $this->statusMessage) ?>
-      </div>
-    <?php else: ?>
-      <p class="tl_confirm"><?= \Contao\StringUtil::specialchars((string) $this->statusMessage) ?></p>
+  <div class="ci-feedback-panel">
+    <?php if ($this->statusMessage): ?>
+      <?php if ($this->statusType === 'error'): ?>
+        <div class="tl_error" style="padding: 12px; margin-bottom: 12px;">
+          <?= \Contao\StringUtil::specialchars((string) $this->statusMessage) ?>
+        </div>
+      <?php else: ?>
+        <p class="tl_confirm" style="margin: 0 0 12px;"><?= \Contao\StringUtil::specialchars((string) $this->statusMessage) ?></p>
+      <?php endif; ?>
     <?php endif; ?>
-  <?php endif; ?>
+  </div>
 
-  <form method="post" action="<?= $this->action ?>" class="tl_form tl_edit_form">
+  <form method="post" action="<?= $this->action ?>" class="tl_form tl_edit_form" autocomplete="off" data-lpignore="true" data-1p-ignore="true">
     <input type="hidden" name="FORM_SUBMIT" value="tl_contao_news_import">
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $this->requestToken ?>">
 
     <div class="tl_formbody_edit">
-      <h3>Quelldatenbank</h3>
+      <h3 class="ci-section-title">Quelldatenbank</h3>
 
       <div class="widget">
         <h3><label for="source_host">Host</label></h3>
-        <input type="text" id="source_host" name="source_host" class="tl_text" placeholder="127.0.0.1" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_host']) ?>">
+        <input type="text" id="source_host" name="source_host" class="tl_text" placeholder="127.0.0.1" autocomplete="off" data-lpignore="true" data-1p-ignore="true" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_host']) ?>">
       </div>
 
       <div class="widget">
         <h3><label for="source_port">Port</label></h3>
-        <input type="text" id="source_port" name="source_port" class="tl_text" placeholder="3306" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_port']) ?>">
+        <input type="text" id="source_port" name="source_port" class="tl_text" placeholder="3306" autocomplete="off" data-lpignore="true" data-1p-ignore="true" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_port']) ?>">
       </div>
 
       <div class="widget">
         <h3><label for="source_database">Datenbank</label></h3>
-        <input type="text" id="source_database" name="source_database" class="tl_text" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_database']) ?>">
+        <input type="text" id="source_database" name="source_database" class="tl_text" autocomplete="off" data-lpignore="true" data-1p-ignore="true" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_database']) ?>">
       </div>
 
       <div class="widget">
         <h3><label for="source_user">Benutzer</label></h3>
-        <input type="text" id="source_user" name="source_user" class="tl_text" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_user']) ?>">
+        <input type="text" id="source_user" name="source_user" class="tl_text" autocomplete="off" data-lpignore="true" data-1p-ignore="true" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_user']) ?>">
       </div>
 
       <div class="widget">
         <h3><label for="source_password">Passwort</label></h3>
-        <input type="password" id="source_password" name="source_password" class="tl_text" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_password']) ?>">
+        <input type="password" id="source_password" name="source_password" class="tl_text" autocomplete="new-password" data-lpignore="true" data-1p-ignore="true" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['source_password']) ?>">
       </div>
 
       <div class="widget checkbox_container">
         <span><input type="checkbox" id="save_credentials" name="save_credentials" value="1"<?= $this->formData['save_credentials'] ? ' checked' : '' ?>> <label for="save_credentials">Zugangsdaten in localconfig speichern (inkl. Passwort)</label></span>
       </div>
 
-      <h3>Importfilter</h3>
+      <div class="ci-source-actions">
+        <button type="submit" class="tl_submit" name="action" value="test_connection">Verbindung testen</button>
+      </div>
+
+      <h3 class="ci-section-title">Importfilter</h3>
 
       <div class="widget">
         <h3><label for="archive_ids">Archive-IDs</label></h3>
@@ -80,35 +112,37 @@
 
     <div class="tl_formbody_submit">
       <div class="tl_submit_container">
-        <button type="submit" class="tl_submit" name="action" value="test_connection">Verbindung testen</button>
         <button type="submit" class="tl_submit" name="action" value="run_import">Import starten</button>
       </div>
     </div>
-  </form>
 
-  <?php if (is_array($this->stats) && !empty($this->stats)): ?>
-    <h3>Ergebnis</h3>
-    <table class="tl_listing">
-      <thead>
-        <tr>
-          <th>Tabelle</th>
-          <th>Eingefuegt</th>
-          <th>Aktualisiert</th>
-          <th>Uebersprungen</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php foreach ($this->stats as $table => $tableStats): ?>
-          <tr>
-            <td><?= htmlspecialchars($table) ?></td>
-            <td><?= (int) $tableStats['inserted'] ?></td>
-            <td><?= (int) $tableStats['updated'] ?></td>
-            <td><?= (int) $tableStats['skipped'] ?></td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
-  <?php elseif (!empty($this->showNoImportInfo)): ?>
-    <p class="tl_info">Kein Import durchgefuehrt (moegliche Ursachen: keine Daten gefunden, truncate-Option nicht aktiviert).</p>
-  <?php endif; ?>
+    <div class="ci-result-panel">
+      <?php if (is_array($this->stats) && !empty($this->stats)): ?>
+        <h3 class="ci-section-title">Ergebnis</h3>
+        <table class="tl_listing">
+          <thead>
+            <tr>
+              <th>Tabelle</th>
+              <th>Eingefuegt</th>
+              <th>Aktualisiert</th>
+              <th>Uebersprungen</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($this->stats as $table => $tableStats): ?>
+              <tr>
+                <td><?= htmlspecialchars($table) ?></td>
+                <td><?= (int) $tableStats['inserted'] ?></td>
+                <td><?= (int) $tableStats['updated'] ?></td>
+                <td><?= (int) $tableStats['skipped'] ?></td>
+              </tr>
+            <?php endforeach; ?>
+          </tbody>
+        </table>
+      <?php elseif (!empty($this->showNoImportInfo)): ?>
+        <h3 class="ci-section-title">Ergebnis</h3>
+        <p class="tl_info" style="margin-bottom: 0;">Kein Import durchgefuehrt (moegliche Ursachen: keine Daten gefunden, truncate-Option nicht aktiviert).</p>
+      <?php endif; ?>
+    </div>
+  </form>
 </div>
