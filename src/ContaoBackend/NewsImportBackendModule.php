@@ -40,7 +40,38 @@ class NewsImportBackendModule extends BackendModule
             'truncate_archives' => $isSubmit ? '1' === Input::post('truncate_archives') : (bool) ($storedFormData['truncate_archives'] ?? false),
             'save_credentials' => $isSubmit ? '1' === Input::post('save_credentials') : (bool) ($storedFormData['save_credentials'] ?? false),
             'import_legacy_files_db' => $isSubmit ? '1' === Input::post('import_legacy_files_db') : (bool) ($storedFormData['import_legacy_files_db'] ?? false),
+            'symlink_files' => $this->inputValue('symlink_files', (string) ($storedFormData['symlink_files'] ?? '')),
         ];
+        // Optional: Symlink public/files anlegen, falls gewünscht
+        if ($isSubmit && !empty($formData['symlink_files'])) {
+            $publicDir = TL_ROOT . '/public';
+            $target = $publicDir . '/files';
+            $source = TL_ROOT . '/files';
+            if (!is_link($target) && !is_dir($target)) {
+                try {
+                    if (!is_dir($publicDir)) {
+                        throw new \RuntimeException('public/-Verzeichnis nicht gefunden!');
+                    }
+                    if (!is_dir($source)) {
+                        throw new \RuntimeException('Quellverzeichnis files/ nicht gefunden!');
+                    }
+                    symlink($source, $target);
+                    $this->setFlash('success', 'Symlink public/files → files/ wurde erfolgreich angelegt.');
+                } catch (\Throwable $e) {
+                    $this->setFlash('error', 'Symlink konnte nicht angelegt werden: ' . $e->getMessage());
+                    $this->persistFormData($formData, false);
+                    $this->persistResultState(null, false);
+                    $this->redirectAfterSubmit();
+                    return;
+                }
+            } else {
+                $this->setFlash('success', 'Symlink oder Verzeichnis public/files existiert bereits.');
+            }
+            $this->persistFormData($formData, false);
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
+            return;
+        }
         // Nur noch Import direkt aus der Quelldatenbank möglich
         if ($isSubmit && $formData['import_legacy_files_db']) {
             try {

@@ -54,6 +54,10 @@
         <span><input type="checkbox" id="import_legacy_files_db" name="import_legacy_files_db" value="1"<?= !empty($this->formData['import_legacy_files_db']) ? ' checked' : '' ?>> <label for="import_legacy_files_db"><strong>Alte tl_files-Einträge direkt aus der Quelldatenbank importieren</strong></label></span>
         <p class="tl_help">Importiert die Datei-Referenzen (UUIDs) direkt aus der alten <code>tl_files</code>-Tabelle der Quelldatenbank. Voraussetzung: Die Bilddateien müssen bereits im Zielsystem im gewählten Zielverzeichnis vorhanden sein. <b>Empfohlen für konsistente Migration!</b></p>
       </div>
+      <div class="widget checkbox_container">
+        <span><input type="checkbox" id="symlink_files" name="symlink_files" value="1"<?= !empty($this->formData['symlink_files']) ? ' checked' : '' ?>> <label for="symlink_files"><strong>Symlink public/files → files/ automatisch anlegen (sofern möglich)</strong></label></span>
+        <p class="tl_help">Legt einen Symlink <code>public/files</code> auf das zentrale <code>files/</code>-Verzeichnis an, falls noch nicht vorhanden. <b>Nur nötig, wenn die Dateien außerhalb von public/ liegen und der Webserver Symlinks anlegen darf!</b> Bei fehlenden Rechten bitte manuell anlegen oder die Dateien kopieren.</p>
+      </div>
       <div class="widget">
         <h3><label for="files_dir">Zielverzeichnis für Dateien</label></h3>
         <input type="text" id="files_dir" name="files_dir" class="tl_text" placeholder="z. B. files/ oder ein Unterordner" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['files_dir']) ?>">
