@@ -44,9 +44,10 @@ class NewsImportBackendModule extends BackendModule
         ];
         // Optional: Symlink public/files anlegen, falls gewünscht
         if ($isSubmit && !empty($formData['symlink_files'])) {
-            $publicDir = TL_ROOT . '/public';
+            $projectDir = System::getContainer()->getParameter('kernel.project_dir');
+            $publicDir = $projectDir . '/public';
             $target = $publicDir . '/files';
-            $source = TL_ROOT . '/files';
+            $source = $projectDir . '/files';
             if (!is_link($target) && !is_dir($target)) {
                 try {
                     if (!is_dir($publicDir)) {
