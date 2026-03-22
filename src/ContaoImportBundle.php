@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sebastian\ContaoImport;
+namespace webfarben\ContaoImport;
 
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
