@@ -107,27 +107,6 @@
     {
         return hex2bin(str_replace('-', '', $uuid));
     }
-<?php
-
-declare(strict_types=1);
-
-namespace Sebastian\ContaoImport\Import;
-
-use Doctrine\DBAL\ArrayParameterType;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Schema\Column;
-use Doctrine\DBAL\Types\BigIntType;
-use Doctrine\DBAL\Types\BooleanType;
-use Doctrine\DBAL\Types\DecimalType;
-use Doctrine\DBAL\Types\FloatType;
-use Doctrine\DBAL\Types\IntegerType;
-use Doctrine\DBAL\Types\SmallIntType;
-
-class NewsImporter
-{
-    /**
-     * @var array<string, array<string, string>>
-     */
     private array $columnMap;
 
     /**
