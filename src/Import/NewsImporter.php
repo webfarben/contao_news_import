@@ -31,11 +31,16 @@ class NewsImporter
             if (!empty($row['singleSRC']) || !empty($row['singlesrc'])) {
                 $srcVal = !empty($row['singleSRC']) ? $row['singleSRC'] : $row['singlesrc'];
                 $new = $this->handleFileReference($srcVal, $filesDir);
-                $row['singleSRC'] = $new;
-                $row['singlesrc'] = $new;
-                // addimage setzen
-                $row['addimage'] = 1;
-                $row['addImage'] = 1;
+                if ('' !== $new) {
+                    $row['singleSRC'] = $new;
+                    $row['singlesrc'] = $new;
+                    // addimage setzen
+                    $row['addimage'] = 1;
+                    $row['addImage'] = 1;
+                } else {
+                    // Keine Datei gefunden -> entferne Referenzen
+                    unset($row['singleSRC'], $row['singlesrc']);
+                }
             }
             // multiSRC (serialized UUIDs oder Pfade)
             if (!empty($row['multiSRC'])) {
@@ -43,10 +48,17 @@ class NewsImporter
                 if (is_array($multi)) {
                     $newMulti = [];
                     foreach ($multi as $src) {
-                        $newMulti[] = $this->handleFileReference($src, $filesDir);
+                        $val = $this->handleFileReference($src, $filesDir);
+                        if ('' !== $val) {
+                            $newMulti[] = $val;
+                        }
                     }
-                    $row['multiSRC'] = serialize($newMulti);
-                    $row['multisrc'] = $row['multiSRC'];
+                    if ([] !== $newMulti) {
+                        $row['multiSRC'] = serialize($newMulti);
+                        $row['multisrc'] = $row['multiSRC'];
+                    } else {
+                        unset($row['multiSRC'], $row['multisrc']);
+                    }
                 }
             }
             // enclosure (analog zu multiSRC)
@@ -55,10 +67,16 @@ class NewsImporter
                 if (is_array($encl)) {
                     $newEncl = [];
                     foreach ($encl as $src) {
-                        $newEncl[] = $this->handleFileReference($src, $filesDir);
+                        $val = $this->handleFileReference($src, $filesDir);
+                        if ('' !== $val) {
+                            $newEncl[] = $val;
+                        }
                     }
-                    $row['enclosure'] = serialize($newEncl);
-                    $row['enclosure'] = $row['enclosure'];
+                    if ([] !== $newEncl) {
+                        $row['enclosure'] = serialize($newEncl);
+                    } else {
+                        unset($row['enclosure']);
+                    }
                 }
             }
         }
