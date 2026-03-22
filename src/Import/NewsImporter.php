@@ -78,8 +78,10 @@ class NewsImporter
             }
             $path = ltrim(preg_replace('#^files/#i', '', $row['path']), '/');
             $fullPath = rtrim($filesDir, '/').'/'.$path;
+            error_log('[ContaoImport] Prüfe Datei: ' . $fullPath);
             if (!is_file($fullPath)) {
                 $this->debugLog($logPrefix.': Datei nicht gefunden: '.$fullPath);
+                error_log('[ContaoImport] Datei NICHT gefunden: ' . $fullPath);
                 continue;
             }
             $exists = $this->targetConnection->fetchOne('SELECT uuid FROM tl_files WHERE path = ?', [$path]);

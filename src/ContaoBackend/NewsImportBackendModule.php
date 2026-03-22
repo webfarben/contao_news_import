@@ -63,17 +63,25 @@ class NewsImportBackendModule extends BackendModule
                 /** @var NewsImporter $importer */
                 $importer = System::getContainer()->get(NewsImporter::class);
                 $importCount = $importer->importLegacyFilesFromDb($legacyConnection, $formData['files_dir'], (bool)$formData['dry_run']);
-                if ($formData['dry_run']) {
-                    $msg = sprintf('Simulation: %d tl_files-Einträge würden importiert (keine Änderungen vorgenommen).', $importCount);
-                } else {
-                    $msg = sprintf('tl_files-Import aus alter DB abgeschlossen: %d Einträge übernommen.', $importCount);
-                }
+                // Ergebnis als Statistik-Array für Feedback-Panel
+                $stats = [
+                    'tl_files' => [
+                        'inserted' => $importCount,
+                        'updated' => 0,
+                        'skipped' => 0,
+                    ],
+                ];
+                $msg = $formData['dry_run']
+                    ? sprintf('Simulation: %d tl_files-Einträge würden importiert (keine Änderungen vorgenommen).', $importCount)
+                    : sprintf('tl_files-Import aus alter DB abgeschlossen: %d Einträge übernommen.', $importCount);
                 $this->setFlash('success', $msg);
+                $this->persistFormData($formData, false);
+                $this->persistResultState($stats, false);
             } catch (\Throwable $e) {
                 $this->setFlash('error', 'Fehler beim Import der tl_files aus der alten DB: ' . $e->getMessage());
+                $this->persistFormData($formData, false);
+                $this->persistResultState(null, false);
             }
-            $this->persistFormData($formData, false);
-            $this->persistResultState(null, false);
             $this->redirectAfterSubmit();
             return;
         }
