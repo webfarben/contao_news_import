@@ -17,6 +17,7 @@ class ImportOptions
         public readonly ?int $since = null,
         public readonly ?int $until = null,
         public readonly ?string $legacyDatabaseUrl = null,
+        public readonly ?string $filesDir = null,
     ) {
     }
 }
