@@ -245,6 +245,10 @@ class NewsImporter
             // syncTableById-Logik für einzelne Zeile (vereinfacht, da Mapping/Update/Insert-Logik schon vorhanden)
             $row = $this->applyColumnMap('tl_news', $row);
             $row = $this->applyFixedValues('tl_news', $row);
+            // addImage automatisch setzen, wenn singleSRC gefüllt ist
+            if (!empty($row['singleSRC'])) {
+                $row['addImage'] = 1;
+            }
             $row = $this->filterByColumns($row, $this->getTargetColumns('tl_news'));
             $row = $this->normalizeRowForTargetColumns($row, $this->getTargetColumns('tl_news'));
             $row = $this->normalizeRowEncoding($row);
