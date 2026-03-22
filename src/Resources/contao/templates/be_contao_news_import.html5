@@ -50,11 +50,6 @@
     <input type="hidden" name="REQUEST_TOKEN" value="<?= $this->requestToken ?>">
 
     <div class="tl_formbody_edit">
-      <h3 class="ci-section-title">Datei- und UUID-Import</h3>
-      <div class="widget checkbox_container">
-        <span><input type="checkbox" id="import_legacy_files" name="import_legacy_files" value="1"<?= !empty($this->formData['import_legacy_files']) ? ' checked' : '' ?>> <label for="import_legacy_files"><strong>Alte tl_files-Einträge importieren (UUIDs übernehmen)</strong></label></span>
-        <p class="tl_help">Importiert die alten Datei-Referenzen (UUIDs) aus einer bereitgestellten tl_files-Exportdatei. Voraussetzung: Die Bilddateien müssen bereits im Zielsystem im gewählten Zielverzeichnis vorhanden sein und die Exportdatei (z. B. als JSON oder CSV) muss die Spalten <code>uuid</code> und <code>path</code> enthalten.</p>
-      </div>
       <div class="widget checkbox_container">
         <span><input type="checkbox" id="import_legacy_files_db" name="import_legacy_files_db" value="1"<?= !empty($this->formData['import_legacy_files_db']) ? ' checked' : '' ?>> <label for="import_legacy_files_db"><strong>Alte tl_files-Einträge direkt aus der Quelldatenbank importieren</strong></label></span>
         <p class="tl_help">Importiert die Datei-Referenzen (UUIDs) direkt aus der alten <code>tl_files</code>-Tabelle der Quelldatenbank. Voraussetzung: Die Bilddateien müssen bereits im Zielsystem im gewählten Zielverzeichnis vorhanden sein. <b>Empfohlen für konsistente Migration!</b></p>
@@ -63,11 +58,6 @@
         <h3><label for="files_dir">Zielverzeichnis für Dateien</label></h3>
         <input type="text" id="files_dir" name="files_dir" class="tl_text" placeholder="z. B. files/ oder ein Unterordner" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['files_dir']) ?>">
         <p class="tl_help">Gib das Verzeichnis an, in dem die importierten Dateien im Zielsystem liegen (Standard: <code>files/</code>). Passe dies an, falls du einen anderen Upload-Ordner verwendest.</p>
-      </div>
-      <div class="widget">
-        <label for="legacy_files_export">tl_files-Exportdatei (JSON/CSV):</label>
-        <input type="file" id="legacy_files_export" name="legacy_files_export" class="tl_text">
-        <p class="tl_help">Exportiere die alte tl_files-Tabelle aus dem Quellsystem (z. B. per phpMyAdmin als CSV oder als JSON-Array) und lade sie hier hoch.</p>
       </div>
       <h3 class="ci-section-title">Quelldatenbank</h3>
 
@@ -147,10 +137,10 @@
         <br><br>
         <strong>Wichtiger Ablauf für einen reibungslosen Import:</strong>
         <ol style="margin-top:8px;">
-          <li>Kopiere <b>alle</b> benötigten Bilddateien und Ordner aus dem alten System nach <code>files/</code> im neuen Contao.</li>
-          <li>Exportiere die alte <code>tl_files</code>-Tabelle (mindestens <code>uuid</code>, <code>path</code>, <code>name</code>, <code>extension</code>, <code>hash</code>).</li>
-          <li>Lade die Exportdatei hier hoch und aktiviere die Option „Alte tl_files-Einträge importieren“.</li>
-          <li>Starte anschließend den News-Import wie gewohnt.</li>
+          <li>Kopiere <b>alle</b> benötigten Bilddateien und Ordner aus dem alten System in das gewünschte Zielverzeichnis (z. B. <code>files/</code>) im neuen Contao.</li>
+          <li>Stelle sicher, dass die alte <code>tl_files</code>-Tabelle in der Quelldatenbank vollständig und aktuell ist (mindestens <code>uuid</code>, <code>path</code>, <code>name</code>, <code>extension</code>, <code>hash</code>).</li>
+          <li>Trage die Zugangsdaten zur alten Datenbank ein und aktiviere die Option „Alte tl_files-Einträge direkt aus der Quelldatenbank importieren“.</li>
+          <li>Starte anschließend den Import wie gewohnt.</li>
         </ol>
         <span style="color:#a00;">Hinweis: Nur wenn die UUIDs und Pfade exakt übereinstimmen, bleiben die Bildreferenzen in News und Inhalten erhalten!</span>
       </div>
