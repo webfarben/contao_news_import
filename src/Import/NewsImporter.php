@@ -260,6 +260,8 @@ class NewsImporter
             $targetId = null !== $mapEntry ? (int)$mapEntry['target_id'] : (int)$row['id'];
             $row['id'] = $targetId;
             $hash = hash('sha256', json_encode($row, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
+            // Debug: log row and target columns to help diagnose missing image fields
+            $this->debugLog('tl_news prepare: targetColumns=' . implode(',', array_keys($this->getTargetColumns('tl_news'))) . ' row=' . json_encode($this->sanitizeRowForLog($row)));
             $exists = (bool)$this->targetConnection->fetchOne("SELECT 1 FROM tl_news WHERE id = ?", [$targetId]);
             if (null !== $mapEntry && $mapEntry['row_hash'] === $hash && $exists) {
                 ++$stats['tl_news']['skipped'];
@@ -278,6 +280,7 @@ class NewsImporter
             if (!$options->dryRun) {
                 $this->targetConnection->insert('tl_news', $row);
                 $this->upsertMapEntry('tl_news', (int)$row['id'], 'tl_news', $targetId, $hash);
+                $this->debugLog('tl_news inserted id=' . $targetId . ' row=' . json_encode($this->sanitizeRowForLog($row)));
             }
             ++$stats['tl_news']['inserted'];
         }
@@ -667,5 +670,45 @@ class NewsImporter
                 'tstamp' => $now,
             ]
         );
+    }
+
+    /**
+     * Schreibe Debug-Meldung in Logdatei (anhängend).
+     */
+    private function debugLog(string $message): void
+    {
+        $logDir = __DIR__ . '/../../var/log';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0775, true);
+        }
+        $file = $logDir . '/contao_import_debug.log';
+        $line = date('c') . ' ' . $message . PHP_EOL;
+        @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Sanitisiert ein Array für Logging (wandelt nicht-utf8 Strings in hex um).
+     *
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>
+     */
+    private function sanitizeRowForLog(array $row): array
+    {
+        $out = [];
+        foreach ($row as $k => $v) {
+            if (is_string($v)) {
+                if (1 !== preg_match('//u', $v)) {
+                    $out[$k] = bin2hex($v);
+                    continue;
+                }
+            }
+            if (is_array($v)) {
+                $out[$k] = $this->sanitizeRowForLog($v);
+                continue;
+            }
+            $out[$k] = $v;
+        }
+
+        return $out;
     }
 }
