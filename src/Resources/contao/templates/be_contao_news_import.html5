@@ -54,9 +54,19 @@
         <span><input type="checkbox" id="import_legacy_files_db" name="import_legacy_files_db" value="1"<?= !empty($this->formData['import_legacy_files_db']) ? ' checked' : '' ?>> <label for="import_legacy_files_db"><strong>Alte tl_files-Einträge direkt aus der Quelldatenbank importieren</strong></label></span>
         <p class="tl_help">Importiert die Datei-Referenzen (UUIDs) direkt aus der alten <code>tl_files</code>-Tabelle der Quelldatenbank. Voraussetzung: Die Bilddateien müssen bereits im Zielsystem im gewählten Zielverzeichnis vorhanden sein. <b>Empfohlen für konsistente Migration!</b></p>
       </div>
-      <div class="widget checkbox_container">
-        <span><input type="checkbox" id="symlink_files" name="symlink_files" value="1"<?= !empty($this->formData['symlink_files']) ? ' checked' : '' ?>> <label for="symlink_files"><strong>Symlink public/files → files/ automatisch anlegen (sofern möglich)</strong></label></span>
-        <p class="tl_help">Legt einen Symlink <code>public/files</code> auf das zentrale <code>files/</code>-Verzeichnis an, falls noch nicht vorhanden. <b>Nur nötig, wenn die Dateien außerhalb von public/ liegen und der Webserver Symlinks anlegen darf!</b> Bei fehlenden Rechten bitte manuell anlegen oder die Dateien kopieren.</p>
+      <div class="widget">
+        <h3>Schritt 1: Symlinks für Dateien anlegen</h3>
+        <p class="tl_help">Bevor du den Import startest, muss ein Symlink im <code>public/</code>-Verzeichnis auf das gewählte Zielverzeichnis (<code><?= htmlspecialchars((string) $this->formData['files_dir']) ?></code>) existieren. Nur so findet Contao die Bilder nach dem Import!<br>
+        <b>Empfohlen:</b> Klicke auf „Symlink anlegen“, um dies automatisch zu erledigen. Bei fehlenden Rechten bitte manuell anlegen oder die Dateien kopieren.</p>
+        <form method="post" action="<?= $this->action ?>" style="margin-bottom:12px;">
+          <input type="hidden" name="FORM_SUBMIT" value="tl_contao_news_import">
+          <input type="hidden" name="REQUEST_TOKEN" value="<?= $this->requestToken ?>">
+          <input type="hidden" name="files_dir" value="<?= \\Contao\\StringUtil::specialchars((string) $this->formData['files_dir']) ?>">
+          <button type="submit" class="tl_submit" name="action" value="create_symlink"<?= $this->symlinkExists ? ' disabled' : '' ?>>Symlink anlegen</button>
+          <?php if ($this->symlinkExists): ?>
+            <span style="color:green; margin-left:8px;">Symlink/Verzeichnis existiert ✔</span>
+          <?php endif; ?>
+        </form>
       </div>
       <div class="widget">
         <h3><label for="files_dir">Zielverzeichnis für Dateien</label></h3>
@@ -129,11 +139,17 @@
       </div>
     </div>
 
+    <?php if ($this->symlinkExists): ?>
     <div class="tl_formbody_submit">
       <div class="tl_submit_container">
         <button type="submit" class="tl_submit" name="action" value="run_import">Import starten</button>
       </div>
     </div>
+    <?php else: ?>
+    <div class="tl_info" style="margin:12px 0; padding:10px; background:#f8f8e8; border:1px solid #e6e6b0; color:#555;">
+      <b>Import erst möglich, wenn der Symlink erfolgreich angelegt wurde!</b>
+    </div>
+    <?php endif; ?>
 
     <?php if ($this->imageCopyNotice): ?>
       <div class="tl_info" style="margin-bottom:16px; padding:12px; background:#f8f8e8; border:1px solid #e6e6b0; color:#555;">

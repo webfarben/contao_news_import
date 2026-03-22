@@ -40,10 +40,45 @@ class NewsImportBackendModule extends BackendModule
             'truncate_archives' => $isSubmit ? '1' === Input::post('truncate_archives') : (bool) ($storedFormData['truncate_archives'] ?? false),
             'save_credentials' => $isSubmit ? '1' === Input::post('save_credentials') : (bool) ($storedFormData['save_credentials'] ?? false),
             'import_legacy_files_db' => $isSubmit ? '1' === Input::post('import_legacy_files_db') : (bool) ($storedFormData['import_legacy_files_db'] ?? false),
-            'symlink_files' => $this->inputValue('symlink_files', (string) ($storedFormData['symlink_files'] ?? '')),
+            // Symlink-Button als separater Schritt, kein persistentes Feld mehr nötig
         ];
         // Optional: Symlink public/files anlegen, falls gewünscht
-        if ($isSubmit && !empty($formData['symlink_files'])) {
+        $action = (string) Input::post('action');
+        if ($isSubmit && $action === 'create_symlink') {
+            $projectDir = System::getContainer()->getParameter('kernel.project_dir');
+            $publicDir = $projectDir . '/public';
+            $filesDir = trim((string) $formData['files_dir'], '/');
+            $target = $publicDir . '/' . $filesDir;
+            $source = $projectDir . '/' . $filesDir;
+            if (!is_link($target) && !is_dir($target)) {
+                try {
+                    if (!is_dir($publicDir)) {
+                        throw new \RuntimeException('public/-Verzeichnis nicht gefunden!');
+                    }
+                    if (!is_dir($source)) {
+                        throw new \RuntimeException('Quellverzeichnis ' . $filesDir . ' nicht gefunden!');
+                    }
+                    $parentTargetDir = dirname($target);
+                    if (!is_dir($parentTargetDir)) {
+                        mkdir($parentTargetDir, 0777, true);
+                    }
+                    symlink($source, $target);
+                    $this->setFlash('success', 'Symlink public/' . $filesDir . ' → ' . $filesDir . ' wurde erfolgreich angelegt.');
+                } catch (\Throwable $e) {
+                    $this->setFlash('error', 'Symlink konnte nicht angelegt werden: ' . $e->getMessage());
+                    $this->persistFormData($formData, false);
+                    $this->persistResultState(null, false);
+                    $this->redirectAfterSubmit();
+                    return;
+                }
+            } else {
+                $this->setFlash('success', 'Symlink oder Verzeichnis public/' . $filesDir . ' existiert bereits.');
+            }
+            $this->persistFormData($formData, false);
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
+            return;
+        }
             $projectDir = System::getContainer()->getParameter('kernel.project_dir');
             $publicDir = $projectDir . '/public';
             $filesDir = trim((string) $formData['files_dir'], '/');
@@ -138,6 +173,12 @@ class NewsImportBackendModule extends BackendModule
         $this->Template->stats = null;
         $this->Template->showNoImportInfo = false;
         $this->Template->formData = $formData;
+        // Symlink-Status für Template bereitstellen
+        $projectDir = System::getContainer()->getParameter('kernel.project_dir');
+        $publicDir = $projectDir . '/public';
+        $filesDir = trim((string) $formData['files_dir'], '/');
+        $target = $publicDir . '/' . $filesDir;
+        $this->Template->symlinkExists = (is_link($target) || is_dir($target));
         $this->Template->messages = '';
 
         if (!$isSubmit) {
