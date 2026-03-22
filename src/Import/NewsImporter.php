@@ -234,16 +234,49 @@ class NewsImporter
 
         $newsWhere = implode(' AND ', $newsWhereParts);
 
-        $stats['tl_news'] = $this->syncTableById(
-            $legacy,
-            'tl_news',
-            $newsWhere,
-            $newsParams,
-            $newsTypes,
-            null,
-            $options->dryRun,
-            false
-        );
+
+        // News-Datensätze laden
+        $newsRows = $this->fetchRows($legacy, 'tl_news', $newsWhere, $newsParams, $newsTypes);
+        // Bildreferenzen aktualisieren (Dateipfad ggf. anpassen)
+        $this->updateNewsImageReferences($newsRows, 'files/');
+        // News-Datensätze schreiben
+        $stats['tl_news'] =  ['inserted' => 0, 'updated' => 0, 'skipped' => 0];
+        foreach ($newsRows as $row) {
+            // syncTableById-Logik für einzelne Zeile (vereinfacht, da Mapping/Update/Insert-Logik schon vorhanden)
+            $row = $this->applyColumnMap('tl_news', $row);
+            $row = $this->applyFixedValues('tl_news', $row);
+            $row = $this->filterByColumns($row, $this->getTargetColumns('tl_news'));
+            $row = $this->normalizeRowForTargetColumns($row, $this->getTargetColumns('tl_news'));
+            $row = $this->normalizeRowEncoding($row);
+            if (!isset($row['id'])) {
+                ++$stats['tl_news']['skipped'];
+                continue;
+            }
+            $mapEntry = $this->findMapEntry('tl_news', (int)$row['id'], 'tl_news');
+            $targetId = null !== $mapEntry ? (int)$mapEntry['target_id'] : (int)$row['id'];
+            $row['id'] = $targetId;
+            $hash = hash('sha256', json_encode($row, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE));
+            $exists = (bool)$this->targetConnection->fetchOne("SELECT 1 FROM tl_news WHERE id = ?", [$targetId]);
+            if (null !== $mapEntry && $mapEntry['row_hash'] === $hash && $exists) {
+                ++$stats['tl_news']['skipped'];
+                continue;
+            }
+            if ($exists) {
+                $updateData = $row;
+                unset($updateData['id']);
+                if (!$options->dryRun && [] !== $updateData) {
+                    $this->targetConnection->update('tl_news', $updateData, ['id' => $targetId]);
+                    $this->upsertMapEntry('tl_news', (int)$row['id'], 'tl_news', $targetId, $hash);
+                }
+                ++$stats['tl_news']['updated'];
+                continue;
+            }
+            if (!$options->dryRun) {
+                $this->targetConnection->insert('tl_news', $row);
+                $this->upsertMapEntry('tl_news', (int)$row['id'], 'tl_news', $targetId, $hash);
+            }
+            ++$stats['tl_news']['inserted'];
+        }
 
         $legacyNewsIds = $this->fetchLegacyNewsIds($legacy, $newsWhere, $newsParams, $newsTypes);
 
