@@ -115,3 +115,9 @@ So bleiben wiederholte Importe schnell und stabil.
 ## GitHub Packages
 
 Wenn du das Bundle ueber GitHub bereitstellen willst, siehe [docs/GITHUB_PACKAGES.md](docs/GITHUB_PACKAGES.md).
+
+## Wichtiger Hinweis zu Bildern
+
+Alle in den News referenzierten Bilddateien (z. B. für singleSRC, multiSRC, enclosure) müssen vor dem Import manuell und mit korrekter Ordnerstruktur in das Zielverzeichnis `files/` der Contao-Installation kopiert werden. Die Erweiterung übernimmt keine automatische Dateikopie!
+
+Fehlende Dateien führen dazu, dass die Bildreferenzen in den importierten News leer bleiben.

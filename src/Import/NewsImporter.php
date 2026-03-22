@@ -1,3 +1,112 @@
+    /**
+     * Aktualisiert Bildreferenzen (singleSRC, multiSRC, enclosure) in News-Datensätzen.
+     * Erwartet, dass die Dateien bereits im Zielverzeichnis liegen.
+     * Legt ggf. neue UUIDs in tl_files an und aktualisiert die Referenzen.
+     *
+     * @param array $newsRows Referenz auf News-Datensätze
+     * @param string $filesDir Zielverzeichnis (z.B. 'files/')
+     */
+    private function updateNewsImageReferences(array &$newsRows, string $filesDir): void
+    {
+        foreach ($newsRows as &$row) {
+            // singleSRC
+            if (!empty($row['singleSRC'])) {
+                $row['singleSRC'] = $this->handleFileReference($row['singleSRC'], $filesDir);
+            }
+            // multiSRC (serialized UUIDs oder Pfade)
+            if (!empty($row['multiSRC'])) {
+                $multi = @unserialize($row['multiSRC']);
+                if (is_array($multi)) {
+                    $newMulti = [];
+                    foreach ($multi as $src) {
+                        $newMulti[] = $this->handleFileReference($src, $filesDir);
+                    }
+                    $row['multiSRC'] = serialize($newMulti);
+                }
+            }
+            // enclosure (analog zu multiSRC)
+            if (!empty($row['enclosure'])) {
+                $encl = @unserialize($row['enclosure']);
+                if (is_array($encl)) {
+                    $newEncl = [];
+                    foreach ($encl as $src) {
+                        $newEncl[] = $this->handleFileReference($src, $filesDir);
+                    }
+                    $row['enclosure'] = serialize($newEncl);
+                }
+            }
+        }
+    }
+
+    /**
+     * Prüft, ob eine Datei bereits in tl_files existiert, legt ggf. einen Eintrag an und gibt die UUID (binär) zurück.
+     * Erwartet, dass die Datei im Zielverzeichnis liegt.
+     *
+     * @param string $src UUID (binär oder String) oder Dateipfad
+     * @param string $filesDir Zielverzeichnis
+     * @return string UUID (binär) für die Referenz in tl_news
+     */
+    private function handleFileReference(string $src, string $filesDir): string
+    {
+        // Prüfen, ob $src bereits eine UUID ist (36 Zeichen mit Bindestrichen)
+        if (preg_match('/^[a-f0-9\-]{36}$/i', $src)) {
+            // Existiert die UUID in tl_files?
+            $bin = $this->uuidToBin($src);
+            $exists = $this->targetConnection->fetchOne('SELECT uuid FROM tl_files WHERE uuid = ?', [$bin]);
+            if ($exists) {
+                return $bin;
+            }
+            // Datei anhand von Pfad suchen (optional)
+            // ...
+        }
+        // Andernfalls: Dateipfad
+        $path = ltrim($src, '/');
+        $fullPath = rtrim($filesDir, '/').'/'.$path;
+        if (!is_file($fullPath)) {
+            // Datei fehlt, Referenz bleibt leer
+            return '';
+        }
+        // Prüfen, ob Datei schon in tl_files ist
+        $row = $this->targetConnection->fetchAssociative('SELECT uuid FROM tl_files WHERE path = ?', [$path]);
+        if ($row && !empty($row['uuid'])) {
+            return $row['uuid'];
+        }
+        // Neue UUID generieren
+        $uuid = $this->generateUuid();
+        $bin = $this->uuidToBin($uuid);
+        // Eintrag in tl_files anlegen
+        $this->targetConnection->insert('tl_files', [
+            'uuid' => $bin,
+            'pid' => 0,
+            'tstamp' => time(),
+            'type' => 'file',
+            'path' => $path,
+            'extension' => pathinfo($path, PATHINFO_EXTENSION),
+            'found' => 1,
+            'hash' => md5_file($fullPath),
+            'name' => pathinfo($path, PATHINFO_FILENAME),
+        ]);
+        return $bin;
+    }
+
+    /**
+     * Generiert eine neue UUID (String, 36 Zeichen)
+     */
+    private function generateUuid(): string
+    {
+        $data = random_bytes(16);
+        $data[6] = chr((ord($data[6]) & 0x0f) | 0x40); // Version 4
+        $data[8] = chr((ord($data[8]) & 0x3f) | 0x80); // Variant
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
+
+    /**
+     * Wandelt eine UUID (String) in Binär (16 Byte) um
+     */
+    private function uuidToBin(string $uuid): string
+    {
+        return hex2bin(str_replace('-', '', $uuid));
+    }
 <?php
 
 declare(strict_types=1);

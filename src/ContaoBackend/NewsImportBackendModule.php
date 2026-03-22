@@ -20,6 +20,8 @@ class NewsImportBackendModule extends BackendModule
 
     protected function compile(): void
     {
+        // Hinweis für Nutzer:innen zur Bilddatei-Kopie
+        $this->Template->imageCopyNotice = 'Hinweis: Alle in den News referenzierten Bilddateien (z. B. für singleSRC, multiSRC, enclosure) müssen vor dem Import manuell und mit korrekter Ordnerstruktur in das Zielverzeichnis <strong>files/</strong> der Contao-Installation kopiert werden. Die Erweiterung übernimmt keine automatische Dateikopie! Fehlende Dateien führen dazu, dass die Bildreferenzen in den importierten News leer bleiben.';
         $isSubmit = 'tl_contao_news_import' === Input::post('FORM_SUBMIT');
         $storedFormData = $this->loadPersistedFormData();
 
@@ -44,6 +46,7 @@ class NewsImportBackendModule extends BackendModule
         }
 
         $this->Template->headline = 'Legacy-News-Import';
+        $this->Template->imageCopyNotice = $this->Template->imageCopyNotice;
         $this->Template->action = StringUtil::ampersand(Environment::get('request'));
         $this->Template->requestToken = $this->resolveRequestToken();
         $this->Template->statusMessage = '';

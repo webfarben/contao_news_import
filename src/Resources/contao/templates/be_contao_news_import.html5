@@ -27,6 +27,12 @@
 
   <h2><?= $this->headline ?></h2>
 
+  <?php if ($this->imageCopyNotice): ?>
+    <div class="tl_info" style="margin-bottom:16px; padding:12px; background:#f8f8e8; border:1px solid #e6e6b0; color:#555;">
+      <?= $this->imageCopyNotice ?>
+    </div>
+  <?php endif; ?>
+
   <div class="ci-feedback-panel">
     <?php if ($this->statusMessage): ?>
       <?php if ($this->statusType === 'error'): ?>
