@@ -431,9 +431,18 @@ class NewsImporter
     {
         $filtered = [];
 
+        // Build a lowercase -> actual column name map for case-insensitive matching
+        $lowerMap = [];
+        foreach (array_keys($targetColumns) as $col) {
+            $lowerMap[strtolower($col)] = $col;
+        }
+
         foreach ($row as $column => $value) {
-            if (isset($targetColumns[$column])) {
-                $filtered[$column] = $value;
+            $lower = strtolower($column);
+
+            if (isset($lowerMap[$lower])) {
+                $actual = $lowerMap[$lower];
+                $filtered[$actual] = $value;
             }
         }
 
