@@ -7,7 +7,16 @@
          * @param bool $dryRun Nur simulieren, keine Inserts
          * @return int Anzahl importierter Dateien
          */
-        public function importLegacyFilesFromDb(Connection $legacyConnection, string $filesDir = 'files/', bool $dryRun = false): int
+        /**
+         * Importiert alle Einträge aus der alten tl_files-Tabelle direkt per DB-Connection.
+         * Übernimmt die UUIDs, sofern die Datei im Zielsystem existiert und noch kein Eintrag vorhanden ist.
+         *
+         * @param Connection $legacyConnection Verbindung zur alten Datenbank
+         * @param string $filesDir Zielverzeichnis (z.B. 'files/' oder beliebiges User-Verzeichnis)
+         * @param bool $dryRun Nur simulieren, keine Inserts
+         * @return int Anzahl importierter Dateien
+         */
+        public function importLegacyFilesFromDb(Connection $legacyConnection, string $filesDir, bool $dryRun = false): int
         {
             $rows = $legacyConnection->fetchAllAssociative('SELECT * FROM tl_files');
             return $this->importTlFilesRows($rows, $filesDir, $dryRun, 'importLegacyFilesFromDb');
@@ -20,7 +29,15 @@
      * @param string $filesDir Zielverzeichnis (z.B. 'files/')
      * @return int Anzahl importierter Dateien
      */
-    public function importLegacyFilesWithUuid(array $oldFilesRows, string $filesDir = 'files/'): int
+    /**
+     * Importiert alle Einträge aus einer alten tl_files (z.B. aus einem Array-Export) in die neue tl_files.
+     * Übernimmt dabei die alte UUID, sofern der Pfad noch nicht existiert.
+     *
+     * @param array $oldFilesRows Array mit alten tl_files-Datensätzen (uuid, path, name, extension, hash, etc.)
+     * @param string $filesDir Zielverzeichnis (z.B. 'files/' oder beliebiges User-Verzeichnis)
+     * @return int Anzahl importierter Dateien
+     */
+    public function importLegacyFilesWithUuid(array $oldFilesRows, string $filesDir): int
     {
         return $this->importTlFilesRows($oldFilesRows, $filesDir, false, 'importLegacyFilesWithUuid');
     }
@@ -408,7 +425,7 @@ class NewsImporter
         // News-Datensätze laden
         $newsRows = $this->fetchRows($legacy, 'tl_news', $newsWhere, $newsParams, $newsTypes);
         // Bildreferenzen aktualisieren (Dateipfad ggf. anpassen)
-        $this->updateNewsImageReferences($newsRows, 'files/');
+        $this->updateNewsImageReferences($newsRows, $options->filesDir ?? 'files/');
         // News-Datensätze schreiben
         $stats['tl_news'] =  ['inserted' => 0, 'updated' => 0, 'skipped' => 0];
         foreach ($newsRows as $row) {
@@ -504,7 +521,9 @@ class NewsImporter
         // Wenn die Tabelle Datei-Referenzen (singleSRC/multiSRC) enthält, versuche diese zu konvertieren.
         // Das stellt sicher, dass z.B. tl_content.singleSRC vor dem Schreiben in binary(16) umgewandelt wird.
         if (array_key_exists('singleSRC', $targetColumns) || array_key_exists('singlesrc', $targetColumns) || array_key_exists('multiSRC', $targetColumns) || array_key_exists('multisrc', $targetColumns)) {
-            $this->updateNewsImageReferences($rows, 'files/');
+            // ACHTUNG: filesDir muss von außen übergeben werden!
+            // Diese Methode sollte nur noch über runImport() mit korrekt gesetztem filesDir aufgerufen werden.
+            $this->updateNewsImageReferences($rows, $options->filesDir ?? 'files/');
         }
         $stats = ['inserted' => 0, 'updated' => 0, 'skipped' => 0];
 

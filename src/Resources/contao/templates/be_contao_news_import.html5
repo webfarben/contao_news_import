@@ -53,11 +53,16 @@
       <h3 class="ci-section-title">Datei- und UUID-Import</h3>
       <div class="widget checkbox_container">
         <span><input type="checkbox" id="import_legacy_files" name="import_legacy_files" value="1"<?= !empty($this->formData['import_legacy_files']) ? ' checked' : '' ?>> <label for="import_legacy_files"><strong>Alte tl_files-Einträge importieren (UUIDs übernehmen)</strong></label></span>
-        <p class="tl_help">Importiert die alten Datei-Referenzen (UUIDs) aus einer bereitgestellten tl_files-Exportdatei. Voraussetzung: Die Bilddateien müssen bereits im Zielsystem unter <strong>files/</strong> vorhanden sein und die Exportdatei (z. B. als JSON oder CSV) muss die Spalten <code>uuid</code> und <code>path</code> enthalten.</p>
+        <p class="tl_help">Importiert die alten Datei-Referenzen (UUIDs) aus einer bereitgestellten tl_files-Exportdatei. Voraussetzung: Die Bilddateien müssen bereits im Zielsystem im gewählten Zielverzeichnis vorhanden sein und die Exportdatei (z. B. als JSON oder CSV) muss die Spalten <code>uuid</code> und <code>path</code> enthalten.</p>
       </div>
       <div class="widget checkbox_container">
         <span><input type="checkbox" id="import_legacy_files_db" name="import_legacy_files_db" value="1"<?= !empty($this->formData['import_legacy_files_db']) ? ' checked' : '' ?>> <label for="import_legacy_files_db"><strong>Alte tl_files-Einträge direkt aus der Quelldatenbank importieren</strong></label></span>
-        <p class="tl_help">Importiert die Datei-Referenzen (UUIDs) direkt aus der alten <code>tl_files</code>-Tabelle der Quelldatenbank. Voraussetzung: Die Bilddateien müssen bereits im Zielsystem unter <strong>files/</strong> vorhanden sein. <b>Empfohlen für konsistente Migration!</b></p>
+        <p class="tl_help">Importiert die Datei-Referenzen (UUIDs) direkt aus der alten <code>tl_files</code>-Tabelle der Quelldatenbank. Voraussetzung: Die Bilddateien müssen bereits im Zielsystem im gewählten Zielverzeichnis vorhanden sein. <b>Empfohlen für konsistente Migration!</b></p>
+      </div>
+      <div class="widget">
+        <h3><label for="files_dir">Zielverzeichnis für Dateien</label></h3>
+        <input type="text" id="files_dir" name="files_dir" class="tl_text" placeholder="z. B. files/ oder ein Unterordner" value="<?= \Contao\StringUtil::specialchars((string) $this->formData['files_dir']) ?>">
+        <p class="tl_help">Gib das Verzeichnis an, in dem die importierten Dateien im Zielsystem liegen (Standard: <code>files/</code>). Passe dies an, falls du einen anderen Upload-Ordner verwendest.</p>
       </div>
       <div class="widget">
         <label for="legacy_files_export">tl_files-Exportdatei (JSON/CSV):</label>

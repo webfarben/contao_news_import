@@ -34,6 +34,7 @@ class NewsImportBackendModule extends BackendModule
             'archive_ids' => $this->inputValue('archive_ids', (string) ($storedFormData['archive_ids'] ?? '')),
             'since' => $this->inputValue('since', (string) ($storedFormData['since'] ?? '')),
             'until' => $this->inputValue('until', (string) ($storedFormData['until'] ?? '')),
+            'files_dir' => $this->inputValue('files_dir', (string) ($storedFormData['files_dir'] ?? 'files/')),
             'dry_run' => $isSubmit ? '1' === Input::post('dry_run') : (bool) ($storedFormData['dry_run'] ?? false),
             'truncate' => $isSubmit ? '1' === Input::post('truncate') : (bool) ($storedFormData['truncate'] ?? false),
             'truncate_archives' => $isSubmit ? '1' === Input::post('truncate_archives') : (bool) ($storedFormData['truncate_archives'] ?? false),
@@ -64,7 +65,7 @@ class NewsImportBackendModule extends BackendModule
                             $legacyConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
                             /** @var NewsImporter $importer */
                             $importer = System::getContainer()->get(NewsImporter::class);
-                            $importCount = $importer->importLegacyFilesFromDb($legacyConnection, 'files/', (bool)$formData['dry_run']);
+                            $importCount = $importer->importLegacyFilesFromDb($legacyConnection, $formData['files_dir'], (bool)$formData['dry_run']);
                             $msg = $formData['dry_run']
                                 ? sprintf('Simulation: %d tl_files-Einträge würden importiert.', $importCount)
                                 : sprintf('tl_files-Import aus alter DB abgeschlossen: %d Einträge übernommen.', $importCount);
@@ -105,7 +106,7 @@ class NewsImportBackendModule extends BackendModule
                 try {
                     /** @var NewsImporter $importer */
                     $importer = System::getContainer()->get(NewsImporter::class);
-                    $importCount = $importer->importLegacyFilesWithUuid($rows, 'files/');
+                    $importCount = $importer->importLegacyFilesWithUuid($rows, $formData['files_dir']);
                     $this->setFlash('success', sprintf('tl_files-Import abgeschlossen: %d Einträge übernommen.', $importCount));
                 } catch (\Throwable $e) {
                     $error = 'Fehler beim Import der tl_files: ' . $e->getMessage();
@@ -250,6 +251,7 @@ class NewsImportBackendModule extends BackendModule
             since: $since,
             until: $until,
             legacyDatabaseUrl: $legacyDatabaseUrl,
+            filesDir: $formData['files_dir'],
         );
 
         try {
