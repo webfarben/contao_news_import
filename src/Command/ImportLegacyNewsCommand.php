@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sebastian\ContaoImport\Command;
+namespace webfarben\ContaoImport\Command;
 
 use webfarben\ContaoImport\Import\ImportOptions;
 use webfarben\ContaoImport\Import\NewsImporter;
