@@ -38,7 +38,87 @@ class NewsImportBackendModule extends BackendModule
             'truncate' => $isSubmit ? '1' === Input::post('truncate') : (bool) ($storedFormData['truncate'] ?? false),
             'truncate_archives' => $isSubmit ? '1' === Input::post('truncate_archives') : (bool) ($storedFormData['truncate_archives'] ?? false),
             'save_credentials' => $isSubmit ? '1' === Input::post('save_credentials') : (bool) ($storedFormData['save_credentials'] ?? false),
+            'import_legacy_files' => $isSubmit ? '1' === Input::post('import_legacy_files') : false,
+            'import_legacy_files_db' => $isSubmit ? '1' === Input::post('import_legacy_files_db') : (bool) ($storedFormData['import_legacy_files_db'] ?? false),
         ];
+        // Wenn Import-Checkbox gesetzt und Datei hochgeladen wurde, führe tl_files-Import per Datei durch
+        if ($isSubmit && $formData['import_legacy_files'] && isset($_FILES['legacy_files_export']) && is_uploaded_file($_FILES['legacy_files_export']['tmp_name'])) {
+                    // Wenn Import-Checkbox für DB gesetzt, führe direkten tl_files-Import aus alter DB durch
+                    if ($isSubmit && $formData['import_legacy_files_db']) {
+                        try {
+                            $legacyDatabaseUrl = $this->buildLegacyDatabaseUrl(
+                                (string) $formData['source_host'],
+                                (string) $formData['source_port'],
+                                (string) $formData['source_database'],
+                                (string) $formData['source_user'],
+                                (string) $formData['source_password']
+                            );
+                            if (null === $legacyDatabaseUrl) {
+                                $this->setFlash('error', 'Bitte Host, Port, Datenbank und Benutzer fuer die Quelldatenbank korrekt eintragen.');
+                                $this->persistFormData($formData, false);
+                                $this->persistResultState(null, false);
+                                $this->redirectAfterSubmit();
+                                return;
+                            }
+                            $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
+                            $legacyConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
+                            /** @var NewsImporter $importer */
+                            $importer = System::getContainer()->get(NewsImporter::class);
+                            $importCount = $importer->importLegacyFilesFromDb($legacyConnection, 'files/', (bool)$formData['dry_run']);
+                            $msg = $formData['dry_run']
+                                ? sprintf('Simulation: %d tl_files-Einträge würden importiert.', $importCount)
+                                : sprintf('tl_files-Import aus alter DB abgeschlossen: %d Einträge übernommen.', $importCount);
+                            $this->setFlash('success', $msg);
+                        } catch (\Throwable $e) {
+                            $this->setFlash('error', 'Fehler beim Import der tl_files aus der alten DB: ' . $e->getMessage());
+                        }
+                        $this->persistFormData($formData, false);
+                        $this->persistResultState(null, false);
+                        $this->redirectAfterSubmit();
+                        return;
+                    }
+            $file = $_FILES['legacy_files_export']['tmp_name'];
+            $content = file_get_contents($file);
+            $rows = [];
+            $error = null;
+            // Versuche JSON-Array zu dekodieren
+            if (null === $rows && $content) {
+                $rows = @json_decode($content, true);
+                if (!is_array($rows)) {
+                    $rows = null;
+                }
+            }
+            // Falls kein JSON: versuche CSV (erste Zeile Header)
+            if (null === $rows && $content) {
+                $lines = array_map('trim', explode("\n", $content));
+                $header = str_getcsv(array_shift($lines));
+                foreach ($lines as $line) {
+                    if ('' === trim($line)) continue;
+                    $data = str_getcsv($line);
+                    $row = array_combine($header, $data);
+                    if ($row) $rows[] = $row;
+                }
+            }
+            if (empty($rows) || !is_array($rows)) {
+                $error = 'Die Exportdatei konnte nicht gelesen werden (unterstützt: JSON-Array oder CSV mit Headerzeile).';
+            } else {
+                try {
+                    /** @var NewsImporter $importer */
+                    $importer = System::getContainer()->get(NewsImporter::class);
+                    $importCount = $importer->importLegacyFilesWithUuid($rows, 'files/');
+                    $this->setFlash('success', sprintf('tl_files-Import abgeschlossen: %d Einträge übernommen.', $importCount));
+                } catch (\Throwable $e) {
+                    $error = 'Fehler beim Import der tl_files: ' . $e->getMessage();
+                }
+            }
+            if ($error) {
+                $this->setFlash('error', $error);
+            }
+            $this->persistFormData($formData, false);
+            $this->persistResultState(null, false);
+            $this->redirectAfterSubmit();
+            return;
+        }
 
         if ($isSubmit && '' === (string) $formData['source_password']) {
             // Erlaubt weiterhin gespeicherte Zugangsdaten, ohne das Passwort beim spaeteren Seitenaufruf vorzubefuellen.

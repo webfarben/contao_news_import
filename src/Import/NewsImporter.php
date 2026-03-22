@@ -1,19 +1,98 @@
-<?php
+        /**
+         * Importiert alle Einträge aus der alten tl_files-Tabelle direkt per DB-Connection.
+         * Übernimmt die UUIDs, sofern die Datei im Zielsystem existiert und noch kein Eintrag vorhanden ist.
+         *
+         * @param Connection $legacyConnection Verbindung zur alten Datenbank
+         * @param string $filesDir Zielverzeichnis (z.B. 'files/')
+         * @param bool $dryRun Nur simulieren, keine Inserts
+         * @return int Anzahl importierter Dateien
+         */
+        public function importLegacyFilesFromDb(Connection $legacyConnection, string $filesDir = 'files/', bool $dryRun = false): int
+        {
+            $rows = $legacyConnection->fetchAllAssociative('SELECT * FROM tl_files');
+            return $this->importTlFilesRows($rows, $filesDir, $dryRun, 'importLegacyFilesFromDb');
+        }
+    /**
+     * Importiert alle Einträge aus einer alten tl_files (z.B. aus einem Array-Export) in die neue tl_files.
+     * Übernimmt dabei die alte UUID, sofern der Pfad noch nicht existiert.
+     *
+     * @param array $oldFilesRows Array mit alten tl_files-Datensätzen (uuid, path, name, extension, hash, etc.)
+     * @param string $filesDir Zielverzeichnis (z.B. 'files/')
+     * @return int Anzahl importierter Dateien
+     */
+    public function importLegacyFilesWithUuid(array $oldFilesRows, string $filesDir = 'files/'): int
+    {
+        return $this->importTlFilesRows($oldFilesRows, $filesDir, false, 'importLegacyFilesWithUuid');
+    }
 
-declare(strict_types=1);
+    /**
+     * Gemeinsame Logik für den Import von tl_files-Einträgen (aus DB oder Datei).
+     * @param array $rows
+     * @param string $filesDir
+     * @param bool $dryRun
+     * @param string $logPrefix
+     * @return int
+     */
+    private function importTlFilesRows(array $rows, string $filesDir, bool $dryRun, string $logPrefix): int
+    {
+        $imported = 0;
+        foreach ($rows as $row) {
+            if (empty($row['path']) || empty($row['uuid'])) {
+                continue;
+            }
+            $path = ltrim(preg_replace('#^files/#i', '', $row['path']), '/');
+            $fullPath = rtrim($filesDir, '/').'/'.$path;
+            if (!is_file($fullPath)) {
+                $this->debugLog($logPrefix.': Datei nicht gefunden: '.$fullPath);
+                continue;
+            }
+            $exists = $this->targetConnection->fetchOne('SELECT uuid FROM tl_files WHERE path = ?', [$path]);
+            if ($exists) {
+                $this->debugLog($logPrefix.': Datei bereits vorhanden: '.$path);
+                continue;
+            }
+            $uuid = $row['uuid'];
+            if (strlen($uuid) !== 16) {
+                $uuid = $this->uuidToBin($uuid);
+            }
+            if (!$dryRun) {
+                $this->targetConnection->insert('tl_files', [
+                    'uuid' => $uuid,
+                    'pid' => 0,
+                    'tstamp' => isset($row['tstamp']) ? (int)$row['tstamp'] : time(),
+                    'type' => $row['type'] ?? 'file',
+                    'path' => $path,
+                    'extension' => $row['extension'] ?? pathinfo($path, PATHINFO_EXTENSION),
+                    'found' => 1,
+                    'hash' => $row['hash'] ?? md5_file($fullPath),
+                    'name' => $row['name'] ?? pathinfo($path, PATHINFO_FILENAME),
+                ]);
+            }
+            $this->debugLog($logPrefix.': importiert '.$path.' mit uuid='.bin2hex($uuid));
+            ++$imported;
+        }
+        return $imported;
+    }
 
-namespace Sebastian\ContaoImport\Import;
-
-use Doctrine\DBAL\ArrayParameterType;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Schema\Column;
-use Doctrine\DBAL\Types\BigIntType;
-use Doctrine\DBAL\Types\BooleanType;
-use Doctrine\DBAL\Types\DecimalType;
-use Doctrine\DBAL\Types\FloatType;
-use Doctrine\DBAL\Types\IntegerType;
-use Doctrine\DBAL\Types\SmallIntType;
-
+/**
+ * HINWEIS ZUM BILDER-IMPORT:
+ *
+ * Um die Bildreferenzen (UUIDs) aus der alten Contao-Installation korrekt zu übernehmen,
+ * müssen die Dateien aus dem alten System nicht nur ins neue Filesystem (z.B. files/...) kopiert werden,
+ * sondern auch die alten UUIDs (Spalte uuid aus alter tl_files) beim Import in die neue tl_files übernommen werden.
+ *
+ * Vorgehen:
+ * 1. Exportiere die alte tl_files (mind. uuid, path, name, extension, hash, etc.).
+ * 2. Beim Import/Synchronisieren prüfe:
+ *    - Gibt es für den Pfad schon einen Eintrag? → ggf. abgleichen/überschreiben.
+ *    - Wenn nicht, lege einen neuen Datensatz mit der alten uuid (als binär!) an:
+ *      $this->handleFileReference($path, $filesDir, $alteUuid);
+ * 3. Nur so bleiben die Referenzen in tl_news/tl_content gültig.
+ *
+ * Alternativ: Nachträgliches Mapping alter zu neuer UUIDs ist möglich, aber fehleranfällig.
+ *
+ * Siehe auch die Option $forceUuid in handleFileReference().
+ */
 class NewsImporter
 {
     /**
@@ -56,6 +135,8 @@ class NewsImporter
                     if ([] !== $newMulti) {
                         $row['multiSRC'] = serialize($newMulti);
                         $row['multisrc'] = $row['multiSRC'];
+                        // Debug-Ausgabe: Hex-UUIDs loggen
+                        $this->debugLog('updateNewsImageReferences: multiSRC converted to ' . json_encode(array_map(fn($u) => bin2hex($u), $newMulti)));
                     } else {
                         unset($row['multiSRC'], $row['multisrc']);
                     }
@@ -74,6 +155,7 @@ class NewsImporter
                     }
                     if ([] !== $newEncl) {
                         $row['enclosure'] = serialize($newEncl);
+                        $this->debugLog('updateNewsImageReferences: enclosure converted to ' . json_encode(array_map(fn($u) => bin2hex($u), $newEncl)));
                     } else {
                         unset($row['enclosure']);
                     }
@@ -90,35 +172,94 @@ class NewsImporter
      * @param string $filesDir Zielverzeichnis
      * @return string UUID (binär) für die Referenz in tl_news
      */
-    private function handleFileReference(string $src, string $filesDir): string
+    /**
+     * @param string $src UUID (binär oder String) oder Dateipfad
+     * @param string $filesDir Zielverzeichnis
+     * @param string|null $forceUuid UUID (String oder binär), die beim Insert verwendet werden soll
+     * @return string UUID (binär) für die Referenz in tl_news
+     */
+    private function handleFileReference(string $src, string $filesDir, $forceUuid = null): string
     {
-        // Prüfen, ob $src bereits eine UUID ist (36 Zeichen mit Bindestrichen)
-        if (preg_match('/^[a-f0-9\-]{36}$/i', $src)) {
-            // Existiert die UUID in tl_files?
-            $bin = $this->uuidToBin($src);
-            $exists = $this->targetConnection->fetchOne('SELECT uuid FROM tl_files WHERE uuid = ?', [$bin]);
-            if ($exists) {
+        // Debug: eingehenden Wert protokollieren (binär -> hex für Lesbarkeit)
+        $logVal = (1 === preg_match('//u', $src) ? $src : bin2hex($src));
+        $this->debugLog(sprintf('handleFileReference: input=%s', $logVal));
+
+        // Normalisieren nur für lesbare Textwerte; bei Binärdaten (16 Byte UUID) nichts ändern
+        $isPrintable = 1 === preg_match('/^[\x20-\x7E]+$/', $src);
+        if ($isPrintable) {
+            $src = trim($src);
+            $src = preg_replace('#^files/#i', '', $src);
+            $src = ltrim($src, '/');
+        }
+        $logNorm = $isPrintable ? $src : bin2hex($src);
+        $this->debugLog(sprintf('handleFileReference: normalized=%s', $logNorm));
+
+        // Wenn bereits 16-Byte Binärstring übergeben wurde, direkt zurückgeben
+        if (strlen($src) === 16 && 1 !== preg_match('/^[0-9a-fA-F]+$/', $src)) {
+            $this->debugLog('handleFileReference: detected 16-byte binary input, returning as-is');
+            return $src;
+        }
+
+        // Erkenne 32-hex (hex string ohne bindestriche)
+        if (1 === preg_match('/^[0-9a-f]{32}$/i', $src)) {
+            $bin = @hex2bin($src);
+            if (false !== $bin && 16 === strlen($bin)) {
+                $this->debugLog('handleFileReference: detected 32-hex, converted to binary');
+                $exists = $this->targetConnection->fetchOne('SELECT uuid FROM tl_files WHERE uuid = ?', [$bin]);
+                if ($exists) {
+                    $this->debugLog('handleFileReference: uuid found in tl_files');
+                    return $bin;
+                }
+                // Wenn nicht gefunden: wir behandeln weiter unten (ggf. Insert ohne Pfad)
                 return $bin;
             }
-            // Datei anhand von Pfad suchen (optional)
-            // ...
         }
-        // Andernfalls: Dateipfad
-        $path = ltrim($src, '/');
+
+        // Erkenne 36-char UUID mit Bindestrichen
+        if (1 === preg_match('/^[a-f0-9\-]{36}$/i', $src)) {
+            $bin = $this->uuidToBin($src);
+            $this->debugLog('handleFileReference: detected 36-char UUID, converted to binary');
+            $exists = $this->targetConnection->fetchOne('SELECT uuid FROM tl_files WHERE uuid = ?', [$bin]);
+            if ($exists) {
+                $this->debugLog('handleFileReference: uuid found in tl_files');
+                return $bin;
+            }
+            // UUID bekannt aber nicht in tl_files -> wir geben das Binär zurück (oder legen neuen Eintrag an, falls Pfad existiert)
+        }
+
+        // Andernfalls: behandeln als Pfad
+        $path = $src;
         $fullPath = rtrim($filesDir, '/').'/'.$path;
+        $this->debugLog(sprintf('handleFileReference: checking file path=%s exists=%s', $path, is_file($fullPath) ? 'yes' : 'no'));
+
         if (!is_file($fullPath)) {
-            // Datei fehlt, Referenz bleibt leer
+            $this->debugLog('handleFileReference: file not found on disk, returning empty');
             return '';
         }
-        // Prüfen, ob Datei schon in tl_files ist
+
+        // Prüfen, ob Datei schon in tl_files ist (pfad-basiert)
         $row = $this->targetConnection->fetchAssociative('SELECT uuid FROM tl_files WHERE path = ?', [$path]);
         if ($row && !empty($row['uuid'])) {
+            $this->debugLog('handleFileReference: found existing tl_files entry for path');
             return $row['uuid'];
         }
-        // Neue UUID generieren
-        $uuid = $this->generateUuid();
-        $bin = $this->uuidToBin($uuid);
-        // Eintrag in tl_files anlegen
+
+        // Ansonsten neuen Eintrag anlegen
+        if ($forceUuid !== null) {
+            // forceUuid kann binär oder String sein
+            if (strlen($forceUuid) === 16 && 1 !== preg_match('/^[0-9a-fA-F]+$/', $forceUuid)) {
+                $bin = $forceUuid;
+                $uuid = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bin), 4));
+            } else {
+                $uuid = str_replace(['{','}'], '', $forceUuid);
+                $bin = $this->uuidToBin($uuid);
+            }
+        } else {
+            $uuid = $this->generateUuid();
+            $bin = $this->uuidToBin($uuid);
+        }
+        $this->debugLog(sprintf('handleFileReference: creating new tl_files entry uuid=%s path=%s', $uuid, $path));
+
         $this->targetConnection->insert('tl_files', [
             'uuid' => $bin,
             'pid' => 0,
@@ -130,6 +271,9 @@ class NewsImporter
             'hash' => md5_file($fullPath),
             'name' => pathinfo($path, PATHINFO_FILENAME),
         ]);
+
+        $this->debugLog(sprintf('handleFileReference: inserted tl_files uuid=%s (hex=%s)', $uuid, bin2hex($bin)));
+
         return $bin;
     }
 
@@ -280,6 +424,7 @@ class NewsImporter
             $row = $this->validateStringLengths($row, $this->getTargetColumns('tl_news'), 'tl_news');
             $row = $this->normalizeRowForTargetColumns($row, $this->getTargetColumns('tl_news'));
             $row = $this->normalizeRowEncoding($row);
+            $this->logColumnLengths('tl_news', $row, $this->getTargetColumns('tl_news'));
             if (!isset($row['id'])) {
                 ++$stats['tl_news']['skipped'];
                 continue;
@@ -356,6 +501,11 @@ class NewsImporter
         $rows = $this->fetchRows($legacy, $table, $where, $params, $types);
 
         $targetColumns = $this->getTargetColumns($table);
+        // Wenn die Tabelle Datei-Referenzen (singleSRC/multiSRC) enthält, versuche diese zu konvertieren.
+        // Das stellt sicher, dass z.B. tl_content.singleSRC vor dem Schreiben in binary(16) umgewandelt wird.
+        if (array_key_exists('singleSRC', $targetColumns) || array_key_exists('singlesrc', $targetColumns) || array_key_exists('multiSRC', $targetColumns) || array_key_exists('multisrc', $targetColumns)) {
+            $this->updateNewsImageReferences($rows, 'files/');
+        }
         $stats = ['inserted' => 0, 'updated' => 0, 'skipped' => 0];
 
         foreach ($rows as $rawRow) {
@@ -376,6 +526,7 @@ class NewsImporter
             $row = $this->validateStringLengths($row, $targetColumns, $table);
             $row = $this->normalizeRowForTargetColumns($row, $targetColumns);
             $row = $this->normalizeRowEncoding($row);
+            $this->logColumnLengths($table, $row, $targetColumns);
 
             if (!isset($row['id'])) {
                 ++$stats['skipped'];
@@ -503,6 +654,13 @@ class NewsImporter
     {
         foreach ($row as $columnName => $value) {
             if (!\is_string($value) || '' === $value) {
+                continue;
+            }
+
+            // Wenn der Wert 16 Byte lang ist und kein gültiger UTF-8-String,
+            // handelt es sich sehr wahrscheinlich um eine binäre UUID (binary(16)).
+            // Solche Werte dürfen nicht per Encoding-Konvertierung verändert werden.
+            if (16 === strlen($value) && 1 !== preg_match('//u', $value)) {
                 continue;
             }
 
@@ -778,11 +936,58 @@ class NewsImporter
             // byte-length check to match DB storage
             $len = strlen($val);
             if ($len > $length) {
+                // If target is binary(16) and value looks like 32 hex chars or 36-char UUID, convert to 16-byte binary
+                if (16 === $length) {
+                    if (1 === preg_match('/^[0-9a-f]{32}$/i', $val)) {
+                        $bin = @hex2bin($val);
+                        if (false !== $bin && 16 === strlen($bin)) {
+                            $row[$col] = $bin;
+                            continue;
+                        }
+                    }
+
+                    if (1 === preg_match('/^[a-f0-9\-]{36}$/i', $val)) {
+                        $bin = $this->uuidToBin($val);
+                        if (false !== $bin && 16 === strlen($bin)) {
+                            $row[$col] = $bin;
+                            continue;
+                        }
+                    }
+                }
+
                 $this->debugLog(sprintf('%s: value for column %s too long (%d > %d) — removing value to avoid SQL error', $table, $col, $len, $length));
                 unset($row[$col]);
             }
         }
 
         return $row;
+    }
+
+    /**
+     * Loggt die Byte-Längen string-ähnlicher Werte gegenüber der Zielsäulen-Länge.
+     * Hilft beim Auffinden, welche Spalte den SQL1406 auslöst.
+     *
+     * @param string $table
+     * @param array<string,mixed> $row
+     * @param array<string, Column> $targetColumns
+     */
+    private function logColumnLengths(string $table, array $row, array $targetColumns): void
+    {
+        $parts = [];
+
+        foreach ($row as $col => $val) {
+            if (!is_string($val)) {
+                continue;
+            }
+
+            $len = strlen($val);
+            $targetLen = $targetColumns[$col]->getLength() ?? null;
+
+            $parts[] = sprintf('%s=%d', $col, $len) . ($targetLen ? sprintf('(%d)', $targetLen) : '');
+        }
+
+        if ([] !== $parts) {
+            $this->debugLog(sprintf("%s: pre-write column lengths: %s", $table, implode(', ', $parts)));
+        }
     }
 }

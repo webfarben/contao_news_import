@@ -7,13 +7,15 @@ Contao-5-Bundle zum Import von Legacy-News aus einer externen Datenbank.
 - Import der News-Archive aus `tl_news_archive`
 - Import der News-Metadaten aus `tl_news`
 - Import der News-Inhalte aus `tl_content` (`ptable = tl_news`)
-- Wiederholbarer, idempotenter Import per Mapping-Tabelle `tl_contao_import_map`
+- Import der Datei-Referenzen (UUIDs) aus `tl_files` direkt aus der alten Datenbank (empfohlen für konsistente Migration)
+- Optional: Import der Datei-Referenzen aus Exportdateien (CSV/JSON)
 
 ## Was wird importiert?
 
 - `tl_news_archive` (Archive/Kategorien)
 - `tl_news` (News-Metadaten)
 - `tl_content` (Inhaltselemente der News, `ptable = tl_news`)
+- `tl_files` (Datei-Referenzen inkl. UUIDs, direkt aus alter DB oder per Datei)
 
 ## Installation
 
