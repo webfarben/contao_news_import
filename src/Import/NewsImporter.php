@@ -27,9 +27,15 @@ class NewsImporter
     private function updateNewsImageReferences(array &$newsRows, string $filesDir): void
     {
         foreach ($newsRows as &$row) {
-            // singleSRC
-            if (!empty($row['singleSRC'])) {
-                $row['singleSRC'] = $this->handleFileReference($row['singleSRC'], $filesDir);
+            // singleSRC (setze sowohl CamelCase als auch lower-case Schlüssel, damit filterByColumns passt)
+            if (!empty($row['singleSRC']) || !empty($row['singlesrc'])) {
+                $srcVal = !empty($row['singleSRC']) ? $row['singleSRC'] : $row['singlesrc'];
+                $new = $this->handleFileReference($srcVal, $filesDir);
+                $row['singleSRC'] = $new;
+                $row['singlesrc'] = $new;
+                // addimage setzen
+                $row['addimage'] = 1;
+                $row['addImage'] = 1;
             }
             // multiSRC (serialized UUIDs oder Pfade)
             if (!empty($row['multiSRC'])) {
@@ -40,6 +46,7 @@ class NewsImporter
                         $newMulti[] = $this->handleFileReference($src, $filesDir);
                     }
                     $row['multiSRC'] = serialize($newMulti);
+                    $row['multisrc'] = $row['multiSRC'];
                 }
             }
             // enclosure (analog zu multiSRC)
@@ -51,6 +58,7 @@ class NewsImporter
                         $newEncl[] = $this->handleFileReference($src, $filesDir);
                     }
                     $row['enclosure'] = serialize($newEncl);
+                    $row['enclosure'] = $row['enclosure'];
                 }
             }
         }
@@ -245,9 +253,10 @@ class NewsImporter
             // syncTableById-Logik für einzelne Zeile (vereinfacht, da Mapping/Update/Insert-Logik schon vorhanden)
             $row = $this->applyColumnMap('tl_news', $row);
             $row = $this->applyFixedValues('tl_news', $row);
-            // addImage automatisch setzen, wenn singleSRC gefüllt ist
-            if (!empty($row['singleSRC'])) {
+            // addImage / addimage automatisch setzen, wenn singleSRC gefüllt ist
+            if (!empty($row['singleSRC']) || !empty($row['singlesrc'])) {
                 $row['addImage'] = 1;
+                $row['addimage'] = 1;
             }
             $row = $this->filterByColumns($row, $this->getTargetColumns('tl_news'));
             $row = $this->normalizeRowForTargetColumns($row, $this->getTargetColumns('tl_news'));
