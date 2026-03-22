@@ -1,26 +1,45 @@
-        /**
-         * Importiert alle Einträge aus der alten tl_files-Tabelle direkt per DB-Connection.
-         * Übernimmt die UUIDs, sofern die Datei im Zielsystem existiert und noch kein Eintrag vorhanden ist.
-         *
-         * @param Connection $legacyConnection Verbindung zur alten Datenbank
-         * @param string $filesDir Zielverzeichnis (z.B. 'files/')
-         * @param bool $dryRun Nur simulieren, keine Inserts
-         * @return int Anzahl importierter Dateien
-         */
-        /**
-         * Importiert alle Einträge aus der alten tl_files-Tabelle direkt per DB-Connection.
-         * Übernimmt die UUIDs, sofern die Datei im Zielsystem existiert und noch kein Eintrag vorhanden ist.
-         *
-         * @param Connection $legacyConnection Verbindung zur alten Datenbank
-         * @param string $filesDir Zielverzeichnis (z.B. 'files/' oder beliebiges User-Verzeichnis)
-         * @param bool $dryRun Nur simulieren, keine Inserts
-         * @return int Anzahl importierter Dateien
-         */
-        public function importLegacyFilesFromDb(Connection $legacyConnection, string $filesDir, bool $dryRun = false): int
-        {
-            $rows = $legacyConnection->fetchAllAssociative('SELECT * FROM tl_files');
-            return $this->importTlFilesRows($rows, $filesDir, $dryRun, 'importLegacyFilesFromDb');
-        }
+<?php
+
+namespace webfarben\ContaoImport\Import;
+
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\DBAL\Types\IntegerType;
+use Doctrine\DBAL\Types\SmallIntType;
+use Doctrine\DBAL\Types\BigIntType;
+use Doctrine\DBAL\Types\BooleanType;
+use Doctrine\DBAL\Types\FloatType;
+use Doctrine\DBAL\Types\DecimalType;
+use Doctrine\DBAL\Schema\Column;
+use Doctrine\DBAL\ArrayParameterType;
+use webfarben\ContaoImport\Import\LegacyConnectionFactory;
+use webfarben\ContaoImport\Import\ImportOptions;
+
+/**
+ * Importiert alle Einträge aus der alten tl_files-Tabelle direkt per DB-Connection.
+ * Übernimmt die UUIDs, sofern die Datei im Zielsystem existiert und noch kein Eintrag vorhanden ist.
+ *
+ * @param Connection $legacyConnection Verbindung zur alten Datenbank
+ * @param string $filesDir Zielverzeichnis (z.B. 'files/')
+ * @param bool $dryRun Nur simulieren, keine Inserts
+ * @return int Anzahl importierter Dateien
+ */
+class NewsImporter
+{
+    /**
+     * Importiert alle Einträge aus der alten tl_files-Tabelle direkt per DB-Connection.
+     * Übernimmt die UUIDs, sofern die Datei im Zielsystem existiert und noch kein Eintrag vorhanden ist.
+     *
+     * @param Connection $legacyConnection Verbindung zur alten Datenbank
+     * @param string $filesDir Zielverzeichnis (z.B. 'files/' oder beliebiges User-Verzeichnis)
+     * @param bool $dryRun Nur simulieren, keine Inserts
+     * @return int Anzahl importierter Dateien
+     */
+    public function importLegacyFilesFromDb(Connection $legacyConnection, string $filesDir, bool $dryRun = false): int
+    {
+        $rows = $legacyConnection->fetchAllAssociative('SELECT * FROM tl_files');
+        return $this->importTlFilesRows($rows, $filesDir, $dryRun, 'importLegacyFilesFromDb');
+    }
     /**
      * Importiert alle Einträge aus einer alten tl_files (z.B. aus einem Array-Export) in die neue tl_files.
      * Übernimmt dabei die alte UUID, sofern der Pfad noch nicht existiert.
@@ -110,8 +129,6 @@
  *
  * Siehe auch die Option $forceUuid in handleFileReference().
  */
-class NewsImporter
-{
     /**
      * Aktualisiert Bildreferenzen (singleSRC, multiSRC, enclosure) in News-Datensätzen.
      * Erwartet, dass die Dateien bereits im Zielverzeichnis liegen.

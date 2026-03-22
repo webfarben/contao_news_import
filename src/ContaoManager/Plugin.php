@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Sebastian\ContaoImport\ContaoManager;
+namespace webfarben\ContaoImport\ContaoManager;
 
 use Contao\ManagerPlugin\Bundle\BundlePluginInterface;
 use Contao\ManagerPlugin\Bundle\Config\BundleConfig;
 use Contao\ManagerPlugin\Bundle\Parser\ParserInterface;
-use Sebastian\ContaoImport\ContaoImportBundle;
+use webfarben\ContaoImport\ContaoImportBundle;
 
 class Plugin implements BundlePluginInterface
 {

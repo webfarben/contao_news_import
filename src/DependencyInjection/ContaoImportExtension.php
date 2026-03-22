@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sebastian\ContaoImport\DependencyInjection;
+namespace webfarben\ContaoImport\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;

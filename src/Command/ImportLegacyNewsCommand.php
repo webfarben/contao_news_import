@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Sebastian\ContaoImport\Command;
 
-use Sebastian\ContaoImport\Import\ImportOptions;
-use Sebastian\ContaoImport\Import\NewsImporter;
+use webfarben\ContaoImport\Import\ImportOptions;
+use webfarben\ContaoImport\Import\NewsImporter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;

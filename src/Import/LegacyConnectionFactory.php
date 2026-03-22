@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sebastian\ContaoImport\Import;
+namespace webfarben\ContaoImport\Import;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;

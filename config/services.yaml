@@ -13,7 +13,7 @@ services:
     autowire: true
     autoconfigure: true
 
-  Sebastian\ContaoImport\:
+  webfarben\ContaoImport\:
     resource: '../src/*'
     exclude:
       - '../src/ContaoManager/'
@@ -21,12 +21,12 @@ services:
       - '../src/Resources/'
       - '../src/ContaoImportBundle.php'
 
-  Sebastian\ContaoImport\Import\LegacyConnectionFactory:
+  webfarben\ContaoImport\Import\LegacyConnectionFactory:
     public: true
     arguments:
       $databaseUrl: '%contao_import.legacy_database_url%'
 
-  Sebastian\ContaoImport\Import\NewsImporter:
+  webfarben\ContaoImport\Import\NewsImporter:
     public: true
     arguments:
       $columnMap: '%contao_import.column_map%'

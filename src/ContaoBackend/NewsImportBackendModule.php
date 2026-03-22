@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Sebastian\ContaoImport\ContaoBackend;
+namespace webfarben\ContaoImport\ContaoBackend;
 
 use Contao\BackendModule;
 use Contao\Config;
@@ -11,8 +11,8 @@ use Contao\Environment;
 use Contao\Input;
 use Contao\StringUtil;
 use Contao\System;
-use Sebastian\ContaoImport\Import\ImportOptions;
-use Sebastian\ContaoImport\Import\NewsImporter;
+use webfarben\ContaoImport\Import\ImportOptions;
+use webfarben\ContaoImport\Import\NewsImporter;
 
 class NewsImportBackendModule extends BackendModule
 {
@@ -61,7 +61,7 @@ class NewsImportBackendModule extends BackendModule
                                 $this->redirectAfterSubmit();
                                 return;
                             }
-                            $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
+                            $legacyConnectionFactory = System::getContainer()->get('webfarben\ContaoImport\Import\LegacyConnectionFactory');
                             $legacyConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
                             /** @var NewsImporter $importer */
                             $importer = System::getContainer()->get(NewsImporter::class);
@@ -172,7 +172,7 @@ class NewsImportBackendModule extends BackendModule
 
         if ('test_connection' === $action) {
             try {
-                $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
+                $legacyConnectionFactory = System::getContainer()->get('webfarben\ContaoImport\Import\LegacyConnectionFactory');
                 $testConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
                 $testConnection->executeQuery('SELECT 1');
 
@@ -187,7 +187,7 @@ class NewsImportBackendModule extends BackendModule
         }
 
         try {
-            $legacyConnectionFactory = System::getContainer()->get('Sebastian\ContaoImport\Import\LegacyConnectionFactory');
+            $legacyConnectionFactory = System::getContainer()->get('webfarben\ContaoImport\Import\LegacyConnectionFactory');
             $testConnection = $legacyConnectionFactory->getConnection($legacyDatabaseUrl);
             $testConnection->executeQuery('SELECT 1');
         } catch (\Throwable $e) {

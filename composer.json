@@ -11,10 +11,10 @@
   },
   "autoload": {
     "psr-4": {
-      "Sebastian\\ContaoImport\\": "src/"
+      "webfarben\\ContaoImport\\": "src/"
     }
   },
   "extra": {
-    "contao-manager-plugin": "Sebastian\\ContaoImport\\ContaoManager\\Plugin"
+    "contao-manager-plugin": "webfarben\\ContaoImport\\ContaoManager\\Plugin"
   }
 }
