@@ -63,7 +63,7 @@ class NewsImportBackendModule extends BackendModule
                         mkdir($parentTargetDir, 0777, true);
                     }
                     symlink($source, $target);
-                    $this->setFlash('success', 'Symlink public/' . $filesDir + ' → ' + $filesDir + ' wurde erfolgreich angelegt.');
+                    $this->setFlash('success', 'Symlink public/' . $filesDir . ' → ' . $filesDir . ' wurde erfolgreich angelegt.');
                 } catch (\Throwable $e) {
                     $this->setFlash('error', 'Symlink konnte nicht angelegt werden: ' . $e->getMessage());
                     $this->persistFormData($formData, false);
