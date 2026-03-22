@@ -277,6 +277,7 @@ class NewsImporter
                 $row['addimage'] = 1;
             }
             $row = $this->filterByColumns($row, $this->getTargetColumns('tl_news'));
+            $row = $this->validateStringLengths($row, $this->getTargetColumns('tl_news'), 'tl_news');
             $row = $this->normalizeRowForTargetColumns($row, $this->getTargetColumns('tl_news'));
             $row = $this->normalizeRowEncoding($row);
             if (!isset($row['id'])) {
@@ -372,6 +373,7 @@ class NewsImporter
             $row = $this->applyColumnMap($table, $row);
             $row = $this->applyFixedValues($table, $row);
             $row = $this->filterByColumns($row, $targetColumns);
+            $row = $this->validateStringLengths($row, $targetColumns, $table);
             $row = $this->normalizeRowForTargetColumns($row, $targetColumns);
             $row = $this->normalizeRowEncoding($row);
 
@@ -746,5 +748,41 @@ class NewsImporter
         }
 
         return $out;
+    }
+
+    /**
+     * Entfernt string-Werte, die länger sind als die Zielsäulen-Länge und loggt Warnungen.
+     *
+     * @param array<string,mixed> $row
+     * @param array<string, Column> $targetColumns
+     * @return array<string,mixed>
+     */
+    private function validateStringLengths(array $row, array $targetColumns, string $table): array
+    {
+        foreach ($row as $col => $val) {
+            if (!is_string($val)) {
+                continue;
+            }
+
+            if (!isset($targetColumns[$col])) {
+                continue;
+            }
+
+            $column = $targetColumns[$col];
+            $length = $column->getLength();
+
+            if (null === $length) {
+                continue;
+            }
+
+            // byte-length check to match DB storage
+            $len = strlen($val);
+            if ($len > $length) {
+                $this->debugLog(sprintf('%s: value for column %s too long (%d > %d) — removing value to avoid SQL error', $table, $col, $len, $length));
+                unset($row[$col]);
+            }
+        }
+
+        return $row;
     }
 }
